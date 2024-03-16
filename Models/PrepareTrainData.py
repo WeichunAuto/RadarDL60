@@ -1,10 +1,12 @@
 import pandas as pd
+# import dask.dataframe as dd
 import numpy as np
 import os
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler
 
 from pathlib import Path
 
@@ -26,20 +28,22 @@ class PrepareTrainData:
         self.batch_size = batch_size
         self.is_shuffle = is_shuffle
 
-    def get_data(self, show=True, is_complex=False):
+    def get_data(self, show=True, isEval=False, is_complex=False):
         df_dataset = None
         is_raw = "" if is_complex is False else "raw/"
-        dataset_directory = str(Path.cwd().parent.parent) + "/publicdata/dataset/" + is_raw + "window_size_" + str(self.window_size)
+        parent_dir = str(Path.cwd().parent.parent) if isEval is False else str(Path.cwd().parent)
+        dataset_directory = parent_dir + "/publicdata/dataset/" + is_raw + "window_size_" + str(self.window_size)
         file_names = [file_name for file_name in os.listdir(dataset_directory) if file_name.startswith('Train_raw_000')]
         for i, file_name in enumerate(file_names):
             file_path = os.path.join(dataset_directory, file_name)
             df = pd.read_csv(file_path)
-            df_dataset = pd.concat([df_dataset, df])
+            df_dataset = pd.concat([df_dataset, df], ignore_index=True)
+            # df_dataset = df_dataset.append(df, ignore_index=True) if df_dataset is not None else df
             print(f'file_name-{i} = {file_path}')
 
             if i > 0:
                 break
-
+        # df_dataset = df_dataset.compute()
         last_column = "fs_" + str(self.window_size*self.fs)
         df_X_train= df_dataset.loc[:, "fs_1":last_column]
 
@@ -63,8 +67,8 @@ class PrepareTrainData:
 
         return X_train, y_train
 
-    def load_data(self, is_complex=False):
-        X_data, y_data = self.get_data(show=False, is_complex=is_complex)
+    def load_data(self, isEval=False, is_complex=False, is_normalize=False):
+        X_data, y_data = self.get_data(show=False, isEval=isEval, is_complex=is_complex)
 
         split_index = int(len(X_data) * 0.8)
         y_data = y_data.reshape(len(y_data), 1)
@@ -73,6 +77,11 @@ class PrepareTrainData:
         X_flattened = X_data.reshape(len(X_data), -1)
         pca = PCA(n_components=int((self.window_size * self.fs)/10))
         X_data = pca.fit_transform(X_flattened)
+
+        # Data Normalize
+        if is_normalize is True:
+            scaler = MinMaxScaler()
+            X_data = scaler.fit_transform(X_data)
 
         X_data = X_data.reshape(len(X_data), self.window_size, int(self.fs/10)) if is_complex is True else X_data.reshape(len(X_data), self.window_size, self.fs)
 

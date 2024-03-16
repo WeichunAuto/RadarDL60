@@ -6,18 +6,19 @@ from Models.LSTM.RadarLSTM import RadarLSTM
 
 import matplotlib.pyplot as plt
 
+
 class EvaModel:
 
     @staticmethod
-    def eva_lstm_preds(model_path, is_complex=False):
-        trained_model = RadarLSTM(n_features=2)
+    def eva_lstm_preds(model_path, isEval=False, is_complex=False):
+        trained_model = RadarLSTM(n_features=200)
         state_dict = torch.load(model_path, map_location=torch.device('cpu'))
         trained_model.load_state_dict(state_dict)
 
         if torch.cuda.is_available():
             trained_model = trained_model.cuda()
 
-        _, test_loader = PrepareTrainData(is_shuffle=False).load_data(is_complex=is_complex)
+        _, test_loader = PrepareTrainData(is_shuffle=False).load_data(isEval=isEval, is_complex=is_complex)
         y_real = None
         y_preds = None
 
@@ -56,6 +57,11 @@ class EvaModel:
         y_preds_mean = np.mean(y_preds)
         print(f"y_preds_max = {y_preds_max}, y_preds_min = {y_preds_min}, y_preds_mean = {y_preds_mean}")
 
+        MSE = np.mean((y_preds - y_real) ** 2)
+        RMSE = np.sqrt(MSE)
+        MAE = np.mean(np.abs(y_preds - y_real))
+        print(f"MSE = {MSE}, RMSE = {RMSE}, MAE = {MAE}")
+
         plt.plot(y_real, color='green', label='Hr Reference')
         plt.plot(y_preds, color='orange', label='Hr Prediction', alpha=0.8)
         plt.xlabel("Numbers")
@@ -65,7 +71,6 @@ class EvaModel:
         plt.show()
 
 
-
 # print(Path.cwd().parent)
 
-EvaModel.eva_lstm_preds("LSTM/lstm_best_t_model_20240315-09:39.tar", is_complex=True)
+EvaModel.eva_lstm_preds("LSTM/lstm_best_t_model_20240315-21:06.tar", isEval=True, is_complex=True)
