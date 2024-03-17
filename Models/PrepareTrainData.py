@@ -1,5 +1,4 @@
 import pandas as pd
-# import dask.dataframe as dd
 import numpy as np
 import os
 import matplotlib.pyplot as plt
@@ -20,6 +19,7 @@ class RadarDataset(Dataset):
 
     def __getitem__(self, index):
         return self.X[index], self.y[index]
+
 
 class PrepareTrainData:
     def __init__(self, window_size=5, fs=2000, batch_size=16, is_shuffle=False):
@@ -43,7 +43,7 @@ class PrepareTrainData:
 
             if i > 0:
                 break
-        # df_dataset = df_dataset.compute()
+
         last_column = "fs_" + str(self.window_size*self.fs)
         df_X_train= df_dataset.loc[:, "fs_1":last_column]
 
