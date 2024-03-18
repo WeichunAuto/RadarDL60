@@ -75,13 +75,19 @@ class PrepareTrainData:
 
         # Data dimensionality reduction
         X_flattened = X_data.reshape(len(X_data), -1)
-        pca = PCA(n_components=int((self.window_size * self.fs)/10))
+        X_length = int((self.window_size * self.fs)/10)
+        pca = PCA(n_components=X_length)
         X_data = pca.fit_transform(X_flattened)
+
+        train_data = np.concatenate((X_data, y_data), axis=1)
 
         # Data Normalize
         if is_normalize is True:
             scaler = MinMaxScaler()
-            X_data = scaler.fit_transform(X_data)
+            train_data = scaler.fit_transform(train_data)
+
+        X_data = train_data[:, 0:X_length]
+        y_data = train_data[:, X_length:X_length+1]
 
         X_data = X_data.reshape(len(X_data), self.window_size, int(self.fs/10)) if is_complex is True else X_data.reshape(len(X_data), self.window_size, self.fs)
 
