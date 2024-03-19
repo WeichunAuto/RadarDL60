@@ -28,9 +28,9 @@ class PrepareTrainData:
         self.batch_size = batch_size
         self.is_shuffle = is_shuffle
 
-    def get_data(self, show=True, isEval=False, is_complex=False):
+    def get_data(self, isEval=False):
         df_dataset = None
-        is_raw = "" if is_complex is False else "raw/"
+        is_raw = "raw/"
         parent_dir = str(Path.cwd().parent.parent) if isEval is False else str(Path.cwd().parent)
         dataset_directory = parent_dir + "/publicdata/dataset/" + is_raw + "window_size_" + str(self.window_size)
         file_names = [file_name for file_name in os.listdir(dataset_directory) if file_name.startswith('Train_raw_000')]
@@ -49,26 +49,22 @@ class PrepareTrainData:
 
         X_train = df_X_train.to_numpy()
 
-        if is_complex is False:
-            df_y_train = df_dataset["hr"].astype("int32")
-            y_train = df_y_train.to_numpy()
-        else:
-            y_train = np.complex64(df_dataset["hr"]).real
+        y_train = np.complex64(df_dataset["hr"]).real
 
-            X_train_comp = np.complex64(X_train)
-            X_train_r = X_train_comp.real
-            X_train_i = X_train_comp.imag
-            X_train = np.dstack((X_train_r, X_train_i)).reshape(X_train_r.shape[0], X_train_r.shape[1], 2)
+        X_train_comp = np.complex64(X_train)
+        X_train_r = X_train_comp.real
+        X_train_i = X_train_comp.imag
+        X_train = np.dstack((X_train_r, X_train_i)).reshape(X_train_r.shape[0], X_train_r.shape[1], 2)
 
-        if show is True:
-            df_y_train.value_counts().plot(kind="bar")
-            plt.xticks(rotation=90)
-            plt.show()
+        # if show is True:
+        #     df_y_train.value_counts().plot(kind="bar")
+        #     plt.xticks(rotation=90)
+        #     plt.show()
 
         return X_train, y_train
 
-    def load_data(self, isEval=False, is_complex=False, is_normalize=False):
-        X_data, y_data = self.get_data(show=False, isEval=isEval, is_complex=is_complex)
+    def load_data(self, isEval=False, is_normalize=False):
+        X_data, y_data = self.get_data(isEval=isEval)
 
         split_index = int(len(X_data) * 0.8)
         y_data = y_data.reshape(len(y_data), 1)
@@ -79,17 +75,16 @@ class PrepareTrainData:
         pca = PCA(n_components=X_length)
         X_data = pca.fit_transform(X_flattened)
 
-        train_data = np.concatenate((X_data, y_data), axis=1)
-
-        # Data Normalize
         if is_normalize is True:
-            scaler = MinMaxScaler()
-            train_data = scaler.fit_transform(train_data)
+            flattened_data = X_data.flatten()
+            flattened_data = flattened_data.reshape(-1, 1)
 
-        X_data = train_data[:, 0:X_length]
-        y_data = train_data[:, X_length:X_length+1]
+            scaler = MinMaxScaler(feature_range=(-10, 10))
+            normalized_data = scaler.fit_transform(flattened_data)
 
-        X_data = X_data.reshape(len(X_data), self.window_size, int(self.fs/10)) if is_complex is True else X_data.reshape(len(X_data), self.window_size, self.fs)
+            X_data = normalized_data.reshape(X_data.shape)
+
+        X_data = X_data.reshape(len(X_data), self.window_size, int(self.fs/10))
 
         X_train = X_data[:split_index]
         y_train = y_data[:split_index]
@@ -111,3 +106,6 @@ class PrepareTrainData:
         test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
 
         return train_loader, test_loader
+
+
+# X_data, y_data = PrepareTrainData(is_shuffle=False).get_data(show=True, isEval=False, is_complex=True)

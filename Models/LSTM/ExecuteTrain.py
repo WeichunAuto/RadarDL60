@@ -118,8 +118,9 @@ class ExecuteTrain:
         plt.show()
 
 
-et = ExecuteTrain(epochs=20)
-t_loss, v_loss, _ = et.start_training()
-et.visualize_loss(t_loss, v_loss)
+# et = ExecuteTrain(epochs=20)
+# t_loss, v_loss, _ = et.start_training()
+# et.visualize_loss(t_loss, v_loss)
 # et.evaluate_preds()
 
+X_data, y_data = PrepareTrainData(is_shuffle=False).load_data(isEval=False, is_normalize=False)

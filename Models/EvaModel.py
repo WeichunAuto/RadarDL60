@@ -73,4 +73,4 @@ class EvaModel:
 
 # print(Path.cwd().parent)
 
-EvaModel.eva_lstm_preds("LSTM/lstm_best_t_model_20240315-21:06.tar", isEval=True, is_complex=True, is_normalize=True)
+# EvaModel.eva_lstm_preds("LSTM/lstm_best_t_model_20240315-21:06.tar", isEval=True, is_complex=True, is_normalize=True)
