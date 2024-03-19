@@ -8,6 +8,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler
 
 from pathlib import Path
+import shutil
 
 class RadarDataset(Dataset):
     def __init__(self, X, y):
@@ -29,9 +30,24 @@ class PrepareTrainData:
         self.is_shuffle = is_shuffle
 
     def get_data(self, isEval=False):
-        df_dataset = None
         is_raw = "raw/"
         parent_dir = str(Path.cwd().parent.parent) if isEval is False else str(Path.cwd().parent)
+
+        if isEval is True:
+            file_name = "test_dataset.csv"
+            parent_dir = parent_dir + "/publicdata/dataset/" + is_raw
+            file_path = os.path.join(parent_dir, file_name)
+
+            df = pd.read_csv(file_path)
+            last_column = "fs_" + str(int(self.window_size * (self.fs / 10)))
+            df_X_train = df.loc[:, "fs_1":last_column]
+
+            X_train = df_X_train.to_numpy()
+            y_train = df["hr"].to_numpy()
+
+            return X_train, y_train
+
+        df_dataset = None
         dataset_directory = parent_dir + "/publicdata/dataset/" + is_raw + "window_size_" + str(self.window_size)
         file_names = [file_name for file_name in os.listdir(dataset_directory) if file_name.startswith('Train_raw_000')]
         for i, file_name in enumerate(file_names):
@@ -55,11 +71,6 @@ class PrepareTrainData:
         X_train_r = X_train_comp.real
         X_train_i = X_train_comp.imag
         X_train = np.dstack((X_train_r, X_train_i)).reshape(X_train_r.shape[0], X_train_r.shape[1], 2)
-
-        # if show is True:
-        #     df_y_train.value_counts().plot(kind="bar")
-        #     plt.xticks(rotation=90)
-        #     plt.show()
 
         return X_train, y_train
 
@@ -105,7 +116,34 @@ class PrepareTrainData:
         train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
         test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
 
+        if isEval is False:
+            self.cache_test_data(test_loader)
+
         return train_loader, test_loader
+
+    def cache_test_data(self, test_loader):
+        new_data_loader = DataLoader(test_loader.dataset, batch_size=len(test_loader.dataset))
+
+        X_batch, y_batch = next(iter(new_data_loader))
+        pd_columns = ["fs_" + str(i) for i in range(1, X_batch.size(1) * X_batch.size(2) + 1)]
+        pd_columns.append("hr")
+        X_batch = X_batch.reshape(len(X_batch), X_batch.size(1) * X_batch.size(2))
+
+        test_data = np.concatenate((X_batch, y_batch), axis=1)
+
+        is_raw = "raw/"
+        parent_dir = str(Path.cwd().parent.parent)
+        cache_directory = parent_dir + "/publicdata/dataset/" + is_raw
+        file_name = "test_dataset.csv"
+        file_path = os.path.join(cache_directory, file_name)
+
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
+        saved_file_path = os.path.join(cache_directory, file_name)
+        df = pd.DataFrame(test_data, columns=pd_columns)
+
+        df.to_csv(saved_file_path)
 
 
 # X_data, y_data = PrepareTrainData(is_shuffle=False).get_data(show=True, isEval=False, is_complex=True)
