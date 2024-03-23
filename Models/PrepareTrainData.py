@@ -29,7 +29,7 @@ class PrepareTrainData:
         self.batch_size = batch_size
         self.is_shuffle = is_shuffle
 
-    def get_data(self, isEval=False):
+    def get_data(self, isEval=False, data_mode="stranger"):
         is_raw = "raw/"
         parent_dir = str(Path.cwd().parent.parent) if isEval is False else str(Path.cwd().parent)
 
@@ -50,6 +50,7 @@ class PrepareTrainData:
         df_dataset = None
         dataset_directory = parent_dir + "/publicdata/dataset/" + is_raw + "window_size_" + str(self.window_size)
         file_names = [file_name for file_name in os.listdir(dataset_directory) if file_name.startswith('Train_raw_000')]
+
         for i, file_name in enumerate(file_names):
             file_path = os.path.join(dataset_directory, file_name)
             df = pd.read_csv(file_path)
@@ -74,8 +75,8 @@ class PrepareTrainData:
 
         return X_train, y_train
 
-    def load_data(self, isEval=False, is_normalize=False):
-        X_data, y_data = self.get_data(isEval=isEval)
+    def load_data(self, isEval=False, data_mode="stranger"):
+        X_data, y_data = self.get_data(isEval=isEval, data_mode=data_mode)
 
         split_index = int(len(X_data) * 0.8)
         y_data = y_data.reshape(len(y_data), 1)
@@ -85,15 +86,6 @@ class PrepareTrainData:
         X_length = int((self.window_size * self.fs)/10)
         pca = PCA(n_components=X_length)
         X_data = pca.fit_transform(X_flattened)
-
-        if is_normalize is True:
-            flattened_data = X_data.flatten()
-            flattened_data = flattened_data.reshape(-1, 1)
-
-            scaler = MinMaxScaler(feature_range=(-10, 10))
-            normalized_data = scaler.fit_transform(flattened_data)
-
-            X_data = normalized_data.reshape(X_data.shape)
 
         X_data = X_data.reshape(len(X_data), self.window_size, int(self.fs/10))
 

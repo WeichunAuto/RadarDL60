@@ -23,7 +23,7 @@ class ExecuteTrain:
 
         self.train_rate = 0.8
         self.y_test = None
-        self.train_loader, self.test_loader = PrepareTrainData(is_shuffle=is_shuffle).load_data(is_complex=True, is_normalize=True)
+        self.train_loader, self.test_loader = PrepareTrainData(is_shuffle=is_shuffle).load_data()
 
         self.lr, self.loss_fun, self.model, self.optimizer = self.initialize_model()
 
@@ -55,11 +55,11 @@ class ExecuteTrain:
             if v_loss < best_v_loss:
                 best_v_loss = v_loss
                 torch.save(self.model.state_dict(), "lstm_best_v_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
-                print(f"A better validation model was saved......")
+                # print(f"A better validation model was saved......")
             if t_loss < best_t_loss:
                 best_t_loss = t_loss
                 torch.save(self.model.state_dict(), "lstm_best_t_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
-                print("A better training model was saved......")
+                # print("A better training model was saved......")
 
             if (epoch + 1) % 10 == 0:
                 print("t_loss: " + str(t_loss) + ", v_loss: " + str(v_loss))
