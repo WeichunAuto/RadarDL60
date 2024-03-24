@@ -108,8 +108,8 @@ def prepare_train_val_data():
     parent_dir = str(Path.cwd().parent)
     dataset_directory = parent_dir + "/publicdata/dataset/"
     raw_dir = dataset_directory + "raw/window_size_5/"
-    train_dir = dataset_directory + "train/individual"
-    val_dir = dataset_directory + "val/individual"
+    train_dir = dataset_directory + "train"
+    val_dir = dataset_directory + "val"
 
     file_names = [file_name for file_name in os.listdir(raw_dir) if file_name.startswith('Train_raw_000')]
     file_names = sorted(file_names, key=lambda x: int(re.findall(r'\d+', x)[0]))
@@ -125,10 +125,6 @@ def prepare_train_val_data():
     for index, file_name in enumerate(file_names):
         _pca_to_csv(file_name, train_dir)
         print(f"training done: {file_name}")
-
-
-
-    print(file_names)
 
 
 def _pca_to_csv(file_name, save_dir):
