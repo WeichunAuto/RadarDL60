@@ -23,16 +23,20 @@ class ExecuteTrain:
 
         self.train_rate = 0.8
         self.y_test = None
-        self.train_loader, self.test_loader = PrepareTrainData(is_shuffle=is_shuffle).load_data()
+        self.train_loader, self.val_loader = self.initialize_dataloader(is_shuffle=is_shuffle)
 
         self.lr, self.loss_fun, self.model, self.optimizer = self.initialize_model()
 
         self.formatted_time = datetime.now().strftime("%Y%m%d-%H:%M")
 
+    def initialize_dataloader(self, is_shuffle=False):
+        ptd = PrepareTrainData(is_shuffle=is_shuffle)
+        return ptd.train_dataloader(), ptd.val_dataloader()
+
     def initialize_model(self):
         lr = 0.001
         loss_fun = nn.MSELoss()
-        model = RadarLSTM(n_features=200)
+        model = RadarLSTM(n_features=590)
 
         if torch.cuda.is_available():
             model = model.cuda()
@@ -48,18 +52,21 @@ class ExecuteTrain:
         best_v_loss = float('inf')
         best_t_loss = float('inf')
 
+        best_t_epoch = 0
+        best_v_epoch = 0
+
         for epoch in tqdm(range(self.epochs)):
             t_loss = self.train_per_epoch()
             v_loss = self.validate_per_epoch()
 
             if v_loss < best_v_loss:
                 best_v_loss = v_loss
+                best_v_epoch = epoch
                 torch.save(self.model.state_dict(), "lstm_best_v_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
-                # print(f"A better validation model was saved......")
             if t_loss < best_t_loss:
                 best_t_loss = t_loss
+                best_t_epoch = epoch
                 torch.save(self.model.state_dict(), "lstm_best_t_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
-                # print("A better training model was saved......")
 
             if (epoch + 1) % 10 == 0:
                 print("t_loss: " + str(t_loss) + ", v_loss: " + str(v_loss))
@@ -67,7 +74,7 @@ class ExecuteTrain:
             train_losses.append(t_loss)
             validate_losses.append(v_loss)
             epoch_counter.append(epoch)
-
+        print(f"best_t_epoch = {best_t_epoch}, best_v_epoch = {best_v_epoch}")
         return train_losses, validate_losses, epoch_counter
 
     def train_per_epoch(self):
@@ -93,7 +100,7 @@ class ExecuteTrain:
     def validate_per_epoch(self):
         self.model.eval()
         loss_batch_sum = 0.
-        for index, batch in enumerate(self.test_loader):
+        for index, batch in enumerate(self.val_loader):
             X_batch, y_batch = batch[0], batch[1]
 
             if torch.cuda.is_available():
@@ -118,7 +125,7 @@ class ExecuteTrain:
         plt.show()
 
 
-et = ExecuteTrain(epochs=20)
+et = ExecuteTrain()
 t_loss, v_loss, _ = et.start_training()
 et.visualize_loss(t_loss, v_loss)
 # et.evaluate_preds()

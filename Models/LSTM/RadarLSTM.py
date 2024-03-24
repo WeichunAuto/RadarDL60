@@ -15,7 +15,7 @@ class RadarLSTM(nn.Module):
 
     def forward(self, x):
         batch_size = x.size(0)
-        sequence_length = x.size(1)
+        sequence_length = 1
 
         h0 = torch.zeros(self.n_layers, batch_size, self.n_hidden)
         c0 = torch.zeros(self.n_layers, batch_size, self.n_hidden)

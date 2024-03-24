@@ -9,10 +9,13 @@ import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
 
-
-
 root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
+data_splits = {
+    "train": 22,
+    "val": 4,
+    "test": 3
+}
 
 def plot_radar_raw_signal(participant):
     fs = 2000
@@ -110,16 +113,24 @@ def prepare_train_val_data():
     raw_dir = dataset_directory + "raw/window_size_5/"
     train_dir = dataset_directory + "train"
     val_dir = dataset_directory + "val"
+    test_dir = dataset_directory + "test"
 
     file_names = [file_name for file_name in os.listdir(raw_dir) if file_name.startswith('Train_raw_000')]
     file_names = sorted(file_names, key=lambda x: int(re.findall(r'\d+', x)[0]))
-    num_val = 6
+    num_val = data_splits["val"]
+    num_test = data_splits["test"]
 
     # create and save data for validation
     for i in range(1, num_val+1):
         last_file_name = file_names.pop()
         _pca_to_csv(last_file_name, val_dir)
         print(f"validation done: {last_file_name}")
+
+    # create and save data for test
+    for i in range(1, num_test + 1):
+        last_file_name = file_names.pop()
+        _pca_to_csv(last_file_name, test_dir)
+        print(f"test done: {last_file_name}")
 
     # create and save data for training
     for index, file_name in enumerate(file_names):

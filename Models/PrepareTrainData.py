@@ -4,11 +4,9 @@ import os
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import Dataset, DataLoader
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import MinMaxScaler
 
 from pathlib import Path
-import shutil
+
 
 class RadarDataset(Dataset):
     def __init__(self, X, y):
@@ -29,113 +27,62 @@ class PrepareTrainData:
         self.batch_size = batch_size
         self.is_shuffle = is_shuffle
 
-    def get_data(self, isEval=False, data_mode="stranger"):
-        is_raw = "raw/"
-        parent_dir = str(Path.cwd().parent.parent) if isEval is False else str(Path.cwd().parent)
-
-        if isEval is True:
-            file_name = "test_dataset.csv"
-            parent_dir = parent_dir + "/publicdata/dataset/" + is_raw
-            file_path = os.path.join(parent_dir, file_name)
-
-            df = pd.read_csv(file_path)
-            last_column = "fs_" + str(int(self.window_size * (self.fs / 10)))
-            df_X_train = df.loc[:, "fs_1":last_column]
-
-            X_train = df_X_train.to_numpy()
-            y_train = df["hr"].to_numpy()
-
-            return X_train, y_train
+    def get_trainval_data(self, is_train=True):
+        parent_dir = str(Path.cwd().parent.parent)
 
         df_dataset = None
-        dataset_directory = parent_dir + "/publicdata/dataset/" + is_raw + "window_size_" + str(self.window_size)
-        file_names = [file_name for file_name in os.listdir(dataset_directory) if file_name.startswith('Train_raw_000')]
+        sub_folder = "train/" if is_train is True else "val/"
+        dataset_directory = parent_dir + "/publicdata/dataset/" + sub_folder
+        file_names = [file_name for file_name in os.listdir(dataset_directory) if file_name.startswith("raw_")]
 
         for i, file_name in enumerate(file_names):
             file_path = os.path.join(dataset_directory, file_name)
             df = pd.read_csv(file_path)
             df_dataset = pd.concat([df_dataset, df], ignore_index=True)
-            # df_dataset = df_dataset.append(df, ignore_index=True) if df_dataset is not None else df
             print(f'file_name-{i} = {file_path}')
 
-            if i > 0:
-                break
+        last_column = "f_590"
+        df_X= df_dataset.loc[:, "f_1":last_column]
 
-        last_column = "fs_" + str(self.window_size*self.fs)
-        df_X_train= df_dataset.loc[:, "fs_1":last_column]
+        X_data = df_X.to_numpy()
+        y_data = df_dataset["hr"].to_numpy()
 
-        X_train = df_X_train.to_numpy()
+        return X_data, y_data
 
-        y_train = np.complex64(df_dataset["hr"]).real
+    def get_test_data(self, participant):
+        parent_dir = str(Path.cwd().parent)
+        dataset_directory = parent_dir + "/publicdata/dataset/test/"
+        file_name = "raw_" + str(participant) + "_Resting.csv"
+        file_path = os.path.join(dataset_directory, file_name)
+        df = pd.read_csv(file_path)
+        last_column = "f_590"
+        df_X_val = df.loc[:, "f_1":last_column]
 
-        X_train_comp = np.complex64(X_train)
-        X_train_r = X_train_comp.real
-        X_train_i = X_train_comp.imag
-        X_train = np.dstack((X_train_r, X_train_i)).reshape(X_train_r.shape[0], X_train_r.shape[1], 2)
+        X_val = df_X_val.to_numpy()
+        y_val = df["hr"].to_numpy()
 
-        return X_train, y_train
+        return X_val, y_val
 
-    def load_data(self, isEval=False, data_mode="stranger"):
-        X_data, y_data = self.get_data(isEval=isEval, data_mode=data_mode)
+    def train_dataloader(self):
+        X_train, y_train = self.get_trainval_data()
+        return self.get_dataloader(X_train, y_train)
 
-        split_index = int(len(X_data) * 0.8)
+    def val_dataloader(self):
+        X_val, y_val = self.get_trainval_data(is_train=False)
+        return self.get_dataloader(X_val, y_val)
+
+    def test_dataloader(self, participant):
+        X_test, y_test = self.get_test_data(participant)
+        return self.get_dataloader(X_test, y_test)
+
+    def get_dataloader(self, X_data, y_data):
         y_data = y_data.reshape(len(y_data), 1)
-
-        # Data dimensionality reduction
-        X_flattened = X_data.reshape(len(X_data), -1)
-        X_length = int((self.window_size * self.fs)/10)
-        pca = PCA(n_components=X_length)
-        X_data = pca.fit_transform(X_flattened)
-
-        X_data = X_data.reshape(len(X_data), self.window_size, int(self.fs/10))
-
-        X_train = X_data[:split_index]
-        y_train = y_data[:split_index]
-
-        X_test = X_data[split_index:]
-        y_test = y_data[split_index:]
-        self.y_test = y_test
-
-        X_train = torch.tensor(X_train).float()
-        y_train = torch.tensor(y_train).float()
-
-        X_test = torch.tensor(X_test).float()
-        y_test = torch.tensor(y_test).float()
-
-        train_dataset = RadarDataset(X_train, y_train)
-        test_dataset = RadarDataset(X_test, y_test)
-
-        train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
-        test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
-
-        if isEval is False:
-            self.cache_test_data(test_loader)
-
-        return train_loader, test_loader
-
-    def cache_test_data(self, test_loader):
-        new_data_loader = DataLoader(test_loader.dataset, batch_size=len(test_loader.dataset))
-
-        X_batch, y_batch = next(iter(new_data_loader))
-        pd_columns = ["fs_" + str(i) for i in range(1, X_batch.size(1) * X_batch.size(2) + 1)]
-        pd_columns.append("hr")
-        X_batch = X_batch.reshape(len(X_batch), X_batch.size(1) * X_batch.size(2))
-
-        test_data = np.concatenate((X_batch, y_batch), axis=1)
-
-        is_raw = "raw/"
-        parent_dir = str(Path.cwd().parent.parent)
-        cache_directory = parent_dir + "/publicdata/dataset/" + is_raw
-        file_name = "test_dataset.csv"
-        file_path = os.path.join(cache_directory, file_name)
-
-        if os.path.isfile(file_path):
-            os.remove(file_path)
-
-        saved_file_path = os.path.join(cache_directory, file_name)
-        df = pd.DataFrame(test_data, columns=pd_columns)
-
-        df.to_csv(saved_file_path)
+        X_data = torch.tensor(X_data).float()
+        y_data = torch.tensor(y_data).float()
+        dataset = RadarDataset(X_data, y_data)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
+        return dataloader
 
 
-# X_data, y_data = PrepareTrainData(is_shuffle=False).get_data(show=True, isEval=False, is_complex=True)
+
+   # X_data, y_data = PrepareTrainData(is_shuffle=False).get_data(show=True, isEval=False, is_complex=True)
