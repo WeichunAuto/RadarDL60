@@ -8,7 +8,7 @@ import sys
 
 sys.path.append('/home/syt0722/Weichun/60pts')
 from Models.PrepareTrainData import PrepareTrainData
-from Models.LSTM.RadarLSTM import RadarLSTM
+from Models.TPALSTM.RadarTpaLSTM import RadarTpaLSTM
 
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -21,8 +21,6 @@ class ExecuteTrainTpaLSTM:
         self.fs = fs
         self.epochs = epochs
 
-        self.train_rate = 0.8
-        self.y_test = None
         self.train_loader, self.val_loader = self.initialize_dataloader(is_shuffle=is_shuffle)
 
         self.lr, self.loss_fun, self.model, self.optimizer = self.initialize_model()
@@ -34,9 +32,9 @@ class ExecuteTrainTpaLSTM:
         return ptd.train_dataloader(), ptd.val_dataloader()
 
     def initialize_model(self):
-        lr = 0.001
+        lr = 0.0001
         loss_fun = nn.MSELoss()
-        model = RadarLSTM(n_features=118)
+        model = RadarTpaLSTM(input_size=118, obs_len=5)
 
         if torch.cuda.is_available():
             model = model.cuda()
@@ -57,16 +55,17 @@ class ExecuteTrainTpaLSTM:
 
         for epoch in tqdm(range(self.epochs)):
             t_loss = self.train_per_epoch()
+            print(f't_loss = {t_loss}')
             v_loss = self.validate_per_epoch()
 
             if v_loss < best_v_loss:
                 best_v_loss = v_loss
                 best_v_epoch = epoch
-                torch.save(self.model.state_dict(), "lstm_best_v_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
+                torch.save(self.model.state_dict(), "tpa-lstm_best_v_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
             if t_loss < best_t_loss:
                 best_t_loss = t_loss
                 best_t_epoch = epoch
-                torch.save(self.model.state_dict(), "lstm_best_t_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
+                torch.save(self.model.state_dict(), "tpa-lstm_best_t_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
 
             if (epoch + 1) % 10 == 0:
                 print("t_loss: " + str(t_loss) + ", v_loss: " + str(v_loss))
@@ -94,6 +93,7 @@ class ExecuteTrainTpaLSTM:
             self.optimizer.step()  # 6. 更新 参数值
 
             loss_batch_sum += loss.item()
+            # print(f'loss_batch_sum-{index} = {loss_batch_sum}')
 
         return loss_batch_sum
 

@@ -21,8 +21,6 @@ class ExecuteTrain:
         self.fs = fs
         self.epochs = epochs
 
-        self.train_rate = 0.8
-        self.y_test = None
         self.train_loader, self.val_loader = self.initialize_dataloader(is_shuffle=is_shuffle)
 
         self.lr, self.loss_fun, self.model, self.optimizer = self.initialize_model()
@@ -94,6 +92,7 @@ class ExecuteTrain:
             self.optimizer.step()  # 6. 更新 参数值
 
             loss_batch_sum += loss.item()
+            print(f'loss_batch_sum-{index} = {loss_batch_sum}')
 
         return loss_batch_sum
 

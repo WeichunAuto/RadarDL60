@@ -11,7 +11,7 @@ class EvaModel:
 
     @staticmethod
     def eva_lstm_preds(model_path, participant):
-        trained_model = RadarLSTM(n_features=590)
+        trained_model = RadarLSTM(n_features=118)
         state_dict = torch.load(model_path, map_location=torch.device('cpu'))
         trained_model.load_state_dict(state_dict)
 
@@ -74,4 +74,4 @@ class EvaModel:
 
 # print(Path.cwd().parent)
 
-EvaModel.eva_lstm_preds("LSTM/s256_lstm_best_t_model_20240325-20:42.tar", 26)
+EvaModel.eva_lstm_preds("LSTM/lstm_best_t_model_20240326-19:11.tar", 26)

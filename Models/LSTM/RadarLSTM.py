@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class RadarLSTM(nn.Module):
-    def __init__(self, n_features=2000, n_hidden=256, n_layers=3):
+    def __init__(self, n_features=2000, n_hidden=1024, n_layers=3):
         super().__init__()
 
         self.n_features = n_features
