@@ -66,6 +66,7 @@ class EvaModel:
         plt.plot(y_preds[0:150], color='orange', label='Hr Prediction', alpha=0.8)
         plt.xlabel("Seconds")
         plt.ylabel("HR")
+        plt.grid()
         plt.legend()
         # plt.savefig(model_path + '.png')
         plt.show()
@@ -73,4 +74,4 @@ class EvaModel:
 
 # print(Path.cwd().parent)
 
-EvaModel.eva_lstm_preds("LSTM/lstm_best_t_model_20240324-22:36.tar", 26)
+EvaModel.eva_lstm_preds("LSTM/s256_lstm_best_t_model_20240325-20:42.tar", 26)

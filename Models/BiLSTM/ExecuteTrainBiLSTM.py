@@ -23,7 +23,7 @@ class ExecuteTrainBiLSTM:
 
         self.train_rate = 0.8
         self.y_test = None
-        self.train_loader, self.test_loader = PrepareTrainData(is_shuffle=is_shuffle).load_data(is_complex=True, is_normalize=True)
+        self.train_loader, self.test_loader = PrepareTrainData(is_shuffle=is_shuffle).train_dataloader(is_complex=True, is_normalize=True)
 
         self.lr, self.loss_fun, self.model, self.optimizer = self.initialize_model()
 

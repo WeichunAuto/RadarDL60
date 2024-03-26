@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 
-class ExecuteTrain:
+class ExecuteTrainTpaLSTM:
     def __init__(self, window_size=5, fs=2000, is_shuffle=False, epochs=500):
 
         self.window_size = window_size
@@ -125,7 +125,7 @@ class ExecuteTrain:
         plt.show()
 
 
-et = ExecuteTrain()
+et = ExecuteTrainTpaLSTM()
 t_loss, v_loss, _ = et.start_training()
 et.visualize_loss(t_loss, v_loss)
 # et.evaluate_preds()
