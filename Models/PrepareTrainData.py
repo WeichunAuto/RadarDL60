@@ -80,7 +80,7 @@ class PrepareTrainData:
 
     def get_dataloader(self, X_data, y_data):
         X_data = X_data.reshape(len(X_data), self.window_size, 118)
-        y_data = y_data.reshape(len(y_data), 1, 1)
+        y_data = y_data.reshape(len(y_data), 1)
         X_data = torch.tensor(X_data).float()
         y_data = torch.tensor(y_data).float()
         dataset = RadarDataset(X_data, y_data)

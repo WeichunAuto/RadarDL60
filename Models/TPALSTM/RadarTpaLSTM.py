@@ -1,48 +1,37 @@
 import torch
-from torch import nn, optim
-
-
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+from torch import nn
 
 
 class RadarTpaLSTM(nn.Module):
 
-    def __init__(self, input_size=118, output_horizon=1, num_filters=3, hidden_size=64, obs_len=5, n_layers=3):
+    def __init__(self, n_features=118, output_horizon=1, num_filters=3, hidden_size=1024, obs_len=5, n_layers=3):
         super(RadarTpaLSTM, self).__init__()
-        self.hidden = nn.Linear(input_size, hidden_size)
+        self.hidden = nn.Linear(n_features, hidden_size)
         self.relu = nn.ReLU()
-        self.lstm = nn.LSTM(input_size, hidden_size, n_layers, bias=True,
+        self.lstm = nn.LSTM(n_features, hidden_size, n_layers, bias=True,
                             batch_first=True)  # output (batch_size, obs_len, hidden_size)
         self.hidden_size = hidden_size
         self.filter_num = num_filters
         self.filter_size = 1  # Don't change this - otherwise CNN filters no longer 1D
-        self.output_horizon = output_horizon
         self.attention = TemporalPatternAttention(self.filter_size, self.filter_num, obs_len - 1, hidden_size)
-        self.mlp_out = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size // 2),
-            self.relu,
-            nn.Dropout(p=0.2),
-            nn.Linear(hidden_size // 2, output_horizon)
-        )
+
         self.linear = nn.Linear(hidden_size, output_horizon)
         self.n_layers = n_layers
 
-        # self.lr = lr
-        self.criterion = nn.MSELoss()
-
-        # self.save_hyperparameters()
-
     def forward(self, x):
         batch_size, obs_len, f_dim = x.size()
-        xconcat = self.relu(self.hidden(x))
 
-        H = torch.zeros(batch_size, obs_len - 1, self.hidden_size).to(device)
-        ht = torch.zeros(self.n_layers, batch_size, self.hidden_size).to(device)
+        H = torch.zeros(batch_size, obs_len - 1, self.hidden_size)
+        ht = torch.zeros(self.n_layers, batch_size, self.hidden_size)
+
+        if torch.cuda.is_available():
+            H = H.cuda()
+            ht = ht.cuda()
+
         ct = ht.clone()
+
         for t in range(obs_len):
             xt = x[:, t, :].view(batch_size, 1, -1)
-            # xt = xconcat[:, t, :].view(batch_size, 1, -1)
             out, (ht, ct) = self.lstm(xt, (ht, ct))
             htt = ht.permute(1, 0, 2)
             htt = htt[:, -1, :]
@@ -53,11 +42,9 @@ class RadarTpaLSTM(nn.Module):
         # reshape hidden states H
         H = H.view(-1, 1, obs_len - 1, self.hidden_size)
         new_ht = self.attention(H, htt)
-        ypred = self.linear(new_ht).unsqueeze(-1)
-        #         ypred = self.mlp_out(new_ht).unsqueeze(-1)
+        ypred = self.linear(new_ht)
 
         return ypred
-
 
 
 class TemporalPatternAttention(nn.Module):

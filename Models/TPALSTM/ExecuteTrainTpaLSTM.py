@@ -34,7 +34,7 @@ class ExecuteTrainTpaLSTM:
     def initialize_model(self):
         lr = 0.0001
         loss_fun = nn.MSELoss()
-        model = RadarTpaLSTM(input_size=118, obs_len=5)
+        model = RadarTpaLSTM(n_features=118, obs_len=5)
 
         if torch.cuda.is_available():
             model = model.cuda()

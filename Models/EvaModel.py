@@ -6,17 +6,18 @@ from Models.LSTM.RadarLSTM import RadarLSTM
 
 import matplotlib.pyplot as plt
 
+from Models.TPALSTM.RadarTpaLSTM import RadarTpaLSTM
+
 
 class EvaModel:
 
     @staticmethod
-    def eva_lstm_preds(model_path, participant):
-        trained_model = RadarLSTM(n_features=118)
+    def eva_lstm_preds(model, model_path, participant):
         state_dict = torch.load(model_path, map_location=torch.device('cpu'))
-        trained_model.load_state_dict(state_dict)
+        model.load_state_dict(state_dict)
 
         if torch.cuda.is_available():
-            trained_model = trained_model.cuda()
+            model = model.cuda()
 
         test_loader = PrepareTrainData().test_dataloader(participant)
         y_real = None
@@ -30,7 +31,7 @@ class EvaModel:
                 y_batch = y_batch.cuda()
 
             with torch.inference_mode():  # 关闭 gradient
-                preds_batch = trained_model(X_batch)
+                preds_batch = model(X_batch)
 
             preds_batch = torch.round(preds_batch)
 
@@ -62,8 +63,8 @@ class EvaModel:
         MAE = np.mean(np.abs(y_preds - y_real))
         print(f"MSE = {MSE}, RMSE = {RMSE}, MAE = {MAE}")
 
-        plt.plot(y_real[0:150], color='green', label='Hr Reference')
-        plt.plot(y_preds[0:150], color='orange', label='Hr Prediction', alpha=0.8)
+        plt.plot(y_real, color='green', label='Hr Reference')
+        plt.plot(y_preds, color='orange', label='Hr Prediction', alpha=0.8)
         plt.xlabel("Seconds")
         plt.ylabel("HR")
         plt.grid()
@@ -71,7 +72,9 @@ class EvaModel:
         # plt.savefig(model_path + '.png')
         plt.show()
 
+model = RadarLSTM(n_features=118)
+model_path = "LSTM/lstm_best_t_model_20240328-12:12_0.2_.tar"
 
-# print(Path.cwd().parent)
-
-EvaModel.eva_lstm_preds("LSTM/lstm_best_t_model_20240326-19:11.tar", 26)
+# model = RadarTpaLSTM(n_features=118)
+# model_path = "TPALSTM/tpa-lstm_best_t_model_20240326-22:08.tar"
+EvaModel.eva_lstm_preds(model, model_path, 23)

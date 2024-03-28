@@ -3,14 +3,15 @@ import torch.nn as nn
 
 
 class RadarLSTM(nn.Module):
-    def __init__(self, n_features=2000, n_hidden=1024, n_layers=3):
+    def __init__(self, n_features=590, n_hidden=1024, n_layers=3, dropout=0.):
         super().__init__()
 
         self.n_features = n_features
         self.n_hidden = n_hidden
         self.n_layers = n_layers
+        self.dropout = dropout
 
-        self.lstm = nn.LSTM(self.n_features, self.n_hidden, self.n_layers, batch_first=True)
+        self.lstm = nn.LSTM(self.n_features, self.n_hidden, self.n_layers, batch_first=True, dropout=self.dropout)
         self.linear = nn.Linear(self.n_hidden, 1)
 
     def forward(self, x):

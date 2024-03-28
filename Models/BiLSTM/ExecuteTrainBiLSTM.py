@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 
 from tqdm import tqdm
+import numpy as np
+import random
 
 import sys
 
@@ -12,6 +14,15 @@ from Models.BiLSTM.RadarBiLSTM import RadarBiLSTM
 
 import matplotlib.pyplot as plt
 from datetime import datetime
+
+
+seed = 100
+random.seed(seed)  # random
+np.random.seed(seed)  # numpy
+torch.manual_seed(seed)  # torch+CPU
+
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(seed)  # torch+GPU
 
 
 class ExecuteTrainBiLSTM:
