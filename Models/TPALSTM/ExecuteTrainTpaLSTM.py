@@ -124,6 +124,7 @@ class ExecuteTrainTpaLSTM:
         return loss_batch_sum
 
     def visualize_loss(self, train_loss, validation_loss):
+        plt.figure(figsize=(10, 3))
         plt.plot(train_loss, color='green', label='train_loss')
         plt.plot(validation_loss, color='blue', label='validation_loss')
         plt.xlabel("epochs")
