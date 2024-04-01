@@ -1,3 +1,5 @@
+import random
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,6 +14,12 @@ from Models.LSTM.RadarLSTM import RadarLSTM
 
 import matplotlib.pyplot as plt
 from datetime import datetime
+
+seed=42
+torch.manual_seed(seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(seed)       # 为当前GPU设置随机种子
+    torch.cuda.manual_seed_all(seed)   # 为所有GPU设置随机种子
 
 
 class ExecuteTrain:
@@ -115,6 +123,7 @@ class ExecuteTrain:
         return loss_batch_sum
 
     def visualize_loss(self, train_loss, validation_loss):
+        plt.figure(figsize=(10, 3))
         plt.plot(train_loss, color='green', label='train_loss')
         plt.plot(validation_loss, color='blue', label='validation_loss')
         plt.xlabel("epochs")
