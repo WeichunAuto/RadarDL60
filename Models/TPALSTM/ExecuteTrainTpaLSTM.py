@@ -13,17 +13,24 @@ from Models.TPALSTM.RadarTpaLSTM import RadarTpaLSTM
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+seed=42
+torch.manual_seed(seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(seed)       # 为当前GPU设置随机种子
+    torch.cuda.manual_seed_all(seed)   # 为所有GPU设置随机种子
+
 
 class ExecuteTrainTpaLSTM:
-    def __init__(self, window_size=5, fs=2000, is_shuffle=False, epochs=500):
+    def __init__(self, window_size=5, fs=2000, is_shuffle=False, epochs=500, dropout=0.):
 
         self.window_size = window_size
         self.fs = fs
         self.epochs = epochs
+        self.dropout = dropout
 
         self.train_loader, self.val_loader = self.initialize_dataloader(is_shuffle=is_shuffle)
 
-        self.lr, self.loss_fun, self.model, self.optimizer = self.initialize_model()
+        self.lr, self.loss_fun, self.model, self.optimizer = self.initialize_model(dropout)
 
         self.formatted_time = datetime.now().strftime("%Y%m%d-%H:%M")
 
@@ -31,10 +38,10 @@ class ExecuteTrainTpaLSTM:
         ptd = PrepareTrainData(is_shuffle=is_shuffle)
         return ptd.train_dataloader(), ptd.val_dataloader()
 
-    def initialize_model(self):
+    def initialize_model(self, dropout):
         lr = 0.0001
         loss_fun = nn.MSELoss()
-        model = RadarTpaLSTM(n_features=118, obs_len=5)
+        model = RadarTpaLSTM(n_features=118, dropout=dropout)
 
         if torch.cuda.is_available():
             model = model.cuda()
@@ -55,20 +62,22 @@ class ExecuteTrainTpaLSTM:
 
         for epoch in tqdm(range(self.epochs)):
             t_loss = self.train_per_epoch()
-            print(f't_loss = {t_loss}')
             v_loss = self.validate_per_epoch()
 
             if v_loss < best_v_loss:
                 best_v_loss = v_loss
                 best_v_epoch = epoch
-                torch.save(self.model.state_dict(), "tpa-lstm_best_v_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
+                torch.save(self.model.state_dict(), "tpa-lstm_best_v_model_"  + self.formatted_time + "_" + str(self.dropout) + "_.tar")  # 保存训练后的模型
             if t_loss < best_t_loss:
                 best_t_loss = t_loss
                 best_t_epoch = epoch
-                torch.save(self.model.state_dict(), "tpa-lstm_best_t_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
+                torch.save(self.model.state_dict(), "tpa-lstm_best_t_model_"  + self.formatted_time + "_" + str(self.dropout) + "_.tar")  # 保存训练后的模型
 
-            if (epoch + 1) % 10 == 0:
+            if (epoch + 1) % 1 == 0:
                 print("t_loss: " + str(t_loss) + ", v_loss: " + str(v_loss))
+
+            if t_loss > 20000:
+                t_loss = 20000
 
             train_losses.append(t_loss)
             validate_losses.append(v_loss)
@@ -93,7 +102,6 @@ class ExecuteTrainTpaLSTM:
             self.optimizer.step()  # 6. 更新 参数值
 
             loss_batch_sum += loss.item()
-            # print(f'loss_batch_sum-{index} = {loss_batch_sum}')
 
         return loss_batch_sum
 
@@ -121,13 +129,31 @@ class ExecuteTrainTpaLSTM:
         plt.xlabel("epochs")
         plt.ylabel("loss")
         plt.legend()
-        plt.savefig('loss_plot' + self.formatted_time + '.png')
+        plt.savefig('loss_plot' + self.formatted_time  + '_' + str(self.dropout) + '_.png')
         plt.show()
 
 
-et = ExecuteTrainTpaLSTM()
+# dropout = 0.
+# et = ExecuteTrainTpaLSTM(epochs=500, dropout=dropout)
+# t_loss, v_loss, _ = et.start_training()
+# et.visualize_loss(t_loss, v_loss)
+
+dropout = 0.03
+et = ExecuteTrainTpaLSTM(epochs=500, dropout=dropout)
 t_loss, v_loss, _ = et.start_training()
 et.visualize_loss(t_loss, v_loss)
-# et.evaluate_preds()
 
-# X_data, y_data = PrepareTrainData(is_shuffle=True).load_data(isEval=False)
+dropout = 0.04
+et = ExecuteTrainTpaLSTM(epochs=500, dropout=dropout)
+t_loss, v_loss, _ = et.start_training()
+et.visualize_loss(t_loss, v_loss)
+
+dropout = 0.05
+et = ExecuteTrainTpaLSTM(epochs=500, dropout=dropout)
+t_loss, v_loss, _ = et.start_training()
+et.visualize_loss(t_loss, v_loss)
+
+dropout = 0.06
+et = ExecuteTrainTpaLSTM(epochs=500, dropout=dropout)
+t_loss, v_loss, _ = et.start_training()
+et.visualize_loss(t_loss, v_loss)

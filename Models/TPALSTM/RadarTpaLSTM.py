@@ -4,19 +4,22 @@ from torch import nn
 
 class RadarTpaLSTM(nn.Module):
 
-    def __init__(self, n_features=118, output_horizon=1, num_filters=3, hidden_size=1024, obs_len=5, n_layers=3):
+    def __init__(self, n_features=118, num_filters=3, n_hidden=1024, obs_len=5, n_layers=3, dropout=0.):
         super(RadarTpaLSTM, self).__init__()
-        self.hidden = nn.Linear(n_features, hidden_size)
+        
+        self.dropout = dropout
+        self.hidden = nn.Linear(n_features, n_hidden)
         self.relu = nn.ReLU()
-        self.lstm = nn.LSTM(n_features, hidden_size, n_layers, bias=True,
-                            batch_first=True)  # output (batch_size, obs_len, hidden_size)
-        self.hidden_size = hidden_size
+        self.lstm = nn.LSTM(n_features, n_hidden, n_layers, bias=True,
+                            batch_first=True, dropout=self.dropout)  # output (batch_size, obs_len, hidden_size)
+        self.hidden_size = n_hidden
         self.filter_num = num_filters
         self.filter_size = 1  # Don't change this - otherwise CNN filters no longer 1D
-        self.attention = TemporalPatternAttention(self.filter_size, self.filter_num, obs_len - 1, hidden_size)
-
-        self.linear = nn.Linear(hidden_size, output_horizon)
+        self.attention = TemporalPatternAttention(self.filter_size, self.filter_num, obs_len - 1, n_hidden)
+        
+        self.linear = nn.Linear(n_hidden, 1)
         self.n_layers = n_layers
+
 
     def forward(self, x):
         batch_size, obs_len, f_dim = x.size()
@@ -45,6 +48,7 @@ class RadarTpaLSTM(nn.Module):
         ypred = self.linear(new_ht)
 
         return ypred
+
 
 
 class TemporalPatternAttention(nn.Module):
