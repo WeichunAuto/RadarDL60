@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 from pathlib import Path
+
+from Models.GRU.RadarGRU import RadarGRU
 from Models.PrepareTrainData import PrepareTrainData
 from Models.LSTM.RadarLSTM import RadarLSTM
 
@@ -72,9 +74,12 @@ class EvaModel:
         # plt.savefig(model_path + '.png')
         plt.show()
 
-model = RadarLSTM(n_features=118)
-model_path = "LSTM/lstm_best_t_model_20240328-12:12_0.2_.tar"
+# model = RadarLSTM(n_features=118)
+# model_path = "LSTM/lstm_best_t_model_20240328-00:18_0.0_.tar"
 
 # model = RadarTpaLSTM(n_features=118)
 # model_path = "TPALSTM/tpa-lstm_best_t_model_20240326-22:08.tar"
+
+model = RadarGRU(n_features=118)
+model_path = "GRU/gru_best_t_model_20240401-16:37_0.03_.tar"
 EvaModel.eva_lstm_preds(model, model_path, 23)
