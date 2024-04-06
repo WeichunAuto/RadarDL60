@@ -6,10 +6,9 @@ from tqdm import tqdm
 
 import sys
 
-from Models.DILATE.NetGRU import NetGRU, EncoderRNN, DecoderRNN
-
 sys.path.append('/home/syt0722/Weichun/60pts')
 from Models.PrepareTrainData import PrepareTrainData
+from Models.DILATE.NetGRU import NetGRU, EncoderRNN, DecoderRNN
 
 import matplotlib.pyplot as plt
 from datetime import datetime
