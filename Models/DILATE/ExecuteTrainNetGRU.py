@@ -36,13 +36,13 @@ class ExecuteTrainNetGRU:
         self.formatted_time = datetime.now().strftime("%Y%m%d-%H:%M")
 
     def initialize_dataloader(self, is_shuffle=False):
-        ptd = PrepareTrainData(batch_size=15, is_shuffle=is_shuffle)
+        ptd = PrepareTrainData(batch_size=16, is_shuffle=is_shuffle)
         return ptd.train_dataloader(), ptd.val_dataloader()
 
     def initialize_model(self, dropout):
         lr = 0.001
         loss_fun = nn.MSELoss()
-        model = NetGRU(device, batch_size=15)
+        model = NetGRU(device, batch_size=16)
 
         if torch.cuda.is_available():
             model = model.cuda()
