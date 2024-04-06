@@ -4,7 +4,7 @@ import torch
 
 class CnnLSTM(nn.Module):
 
-    def __init__(self, n_features=118, n_hidden=256, n_layers=3, dropout=0.):
+    def __init__(self, n_features=118, out_channels=2000, n_hidden=1024, n_layers=3, dropout=0.):
         super(CnnLSTM, self).__init__()
 
         self.n_layers = n_layers
@@ -15,11 +15,11 @@ class CnnLSTM(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
         self.conv = nn.Sequential(
-            nn.Conv1d( in_channels=self.n_features, out_channels=1180, kernel_size=3),
+            nn.Conv1d( in_channels=self.n_features, out_channels=out_channels, kernel_size=3),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=3, stride=1)
         )
-        self.lstm = nn.LSTM(input_size=1180, hidden_size=n_hidden,
+        self.lstm = nn.LSTM(input_size=out_channels, hidden_size=n_hidden,
                             num_layers=n_layers, batch_first=True, dropout=self.dropout)
 
         self.linear = nn.Linear(n_hidden, out_features=1)
