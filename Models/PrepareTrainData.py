@@ -41,7 +41,7 @@ class PrepareTrainData:
             df_dataset = pd.concat([df_dataset, df], ignore_index=True)
             print(f'file_name-{i} = {file_path}')
 
-            if i > 0:
+            if i > 1:
                 break
 
         last_column = "f_590"
