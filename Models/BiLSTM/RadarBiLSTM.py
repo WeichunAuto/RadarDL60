@@ -3,15 +3,19 @@ import torch.nn as nn
 
 
 class RadarBiLSTM(nn.Module):
-    def __init__(self, n_features=2000, n_hidden=256, n_layers=3):
+    def __init__(self, n_features=118, n_hidden=1024, n_layers=3, dropout=0.01):
         super().__init__()
+
+        self.lr = 0.001
+        self.loss_fun = nn.MSELoss()
 
         self.n_features = n_features
         self.n_hidden = n_hidden
         self.n_layers = n_layers
         self.num_directions = 2
+        self.dropout = dropout
 
-        self.lstm = nn.LSTM(self.n_features, self.n_hidden, self.n_layers, batch_first=True, bidirectional=True)
+        self.lstm = nn.LSTM(self.n_features, self.n_hidden, self.n_layers, batch_first=True, bidirectional=True, dropout=self.dropout)
         self.linear = nn.Linear(self.n_hidden, 1)
 
     def forward(self, x):

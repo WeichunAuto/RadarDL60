@@ -6,23 +6,25 @@ import pandas as pd
 
 import sys
 
-from Models.LSTM.RadarLSTM import RadarLSTM
-
 sys.path.append('/home/syt0722/Weichun/60pts')
 from Models.ExecuteTrainModels import ExecuteTrainModels
 from Models.ModelNames import ModelNames
+from Models.LSTM.RadarLSTM import RadarLSTM
+from Models.BiLSTM.RadarBiLSTM import RadarBiLSTM
 
 
 def get_model(model_name):
     model = None
     if model_name == ModelNames.LSTM.value:
         model = RadarLSTM()
+    elif model_name == ModelNames.BiLSTM.value:
+        model = RadarBiLSTM()
 
     return model
 
 
 epochs = 2
-model_name = ModelNames.LSTM.value
+model_name = ModelNames.BiLSTM.value
 my_model = get_model(model_name)
 
 pd_columns = ["t_loss", "v_loss", "p_id"]
