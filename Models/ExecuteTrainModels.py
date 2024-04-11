@@ -1,16 +1,12 @@
-import random
+import os
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
-
 from tqdm import tqdm
 
 import sys
-
 sys.path.append('/home/syt0722/Weichun/60pts')
 from Models.PrepareTrainData import PrepareTrainData
-from Models.LSTM.RadarLSTM import RadarLSTM
 
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -22,34 +18,31 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(seed)   # 为所有GPU设置随机种子
 
 
-class ExecuteTrain:
-    def __init__(self, window_size=5, fs=2000, is_shuffle=False, epochs=500):
-
-        self.window_size = window_size
-        self.fs = fs
+class ExecuteTrainModels:
+    def __init__(self, model, model_name, participant_id, is_shuffle=False, epochs=500):
+        self.participant_id = participant_id
         self.epochs = epochs
+        self.model = model
+        self.model_name = model_name
+        self.lr = self.model.lr
+        self.loss_fun = self.model.loss_fun
+        self.optimizer = self.initialize_model()
 
-        self.train_loader, self.val_loader = self.initialize_dataloader(is_shuffle=is_shuffle)
+        self.train_loader, self.val_loader = self.initialize_dataloader(participant_id, is_shuffle=is_shuffle)
 
-        self.lr, self.loss_fun, self.model, self.optimizer = self.initialize_model()
+        self.formatted_time = datetime.now().strftime("%m%d%H%M")
 
-        self.formatted_time = datetime.now().strftime("%Y%m%d-%H:%M")
-
-    def initialize_dataloader(self, is_shuffle=False):
+    def initialize_dataloader(self, participant_id, is_shuffle=False):
         ptd = PrepareTrainData(is_shuffle=is_shuffle)
-        return ptd.train_dataloader(), ptd.val_dataloader()
+        return ptd.get_cross_dataloaders(participant_id)
 
     def initialize_model(self):
-        lr = 0.001
-        loss_fun = nn.MSELoss()
-        model = RadarLSTM(n_features=118)
-
         if torch.cuda.is_available():
-            model = model.cuda()
-            loss_fun = loss_fun.cuda()
-        optimizer = optim.ASGD(model.parameters(), lr=lr)
+            self.model = self.model.cuda()
+            self.loss_fun = self.loss_fun.cuda()
+        optimizer = optim.ASGD(self.model.parameters(), lr=self.lr)
 
-        return lr, loss_fun, model, optimizer
+        return optimizer
 
     def start_training(self):
         train_losses = []
@@ -57,6 +50,14 @@ class ExecuteTrain:
         epoch_counter = []
         best_v_loss = float('inf')
         best_t_loss = float('inf')
+
+        current_dir = os.path.dirname(__file__)
+        save_path = os.path.join(current_dir, self.model_name, "trained_models")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+
+        model_file_name = self.model_name + "_model_" + self.formatted_time + "_val_" + str(self.participant_id) + ".tar"
+        save_model_path = os.path.join(save_path, model_file_name)
 
         best_t_epoch = 0
         best_v_epoch = 0
@@ -68,14 +69,17 @@ class ExecuteTrain:
             if v_loss < best_v_loss:
                 best_v_loss = v_loss
                 best_v_epoch = epoch
-                torch.save(self.model.state_dict(), "lstm_best_v_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
+                # torch.save(self.model.state_dict(), "lstm_best_v_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
             if t_loss < best_t_loss:
                 best_t_loss = t_loss
                 best_t_epoch = epoch
-                torch.save(self.model.state_dict(), "lstm_best_t_model_" + self.formatted_time + ".tar")  # 保存训练后的模型
+                torch.save(self.model.state_dict(), save_model_path)  # 保存训练后的模型
 
-            if (epoch + 1) % 10 == 0:
+            if (epoch + 1) % 1 == 0:
                 print("t_loss: " + str(t_loss) + ", v_loss: " + str(v_loss))
+
+            if t_loss > 20000:
+                t_loss = 20000
 
             train_losses.append(t_loss)
             validate_losses.append(v_loss)
@@ -100,7 +104,6 @@ class ExecuteTrain:
             self.optimizer.step()  # 6. 更新 参数值
 
             loss_batch_sum += loss.item()
-            print(f'loss_batch_sum-{index} = {loss_batch_sum}')
 
         return loss_batch_sum
 
@@ -133,9 +136,9 @@ class ExecuteTrain:
         plt.show()
 
 
-et = ExecuteTrain()
-t_loss, v_loss, _ = et.start_training()
-et.visualize_loss(t_loss, v_loss)
+# et = ExecuteTrainLSTM()
+# t_loss, v_loss, _ = et.start_training()
+# et.visualize_loss(t_loss, v_loss)
 # et.evaluate_preds()
 
 # X_data, y_data = PrepareTrainData(is_shuffle=True).load_data(isEval=False)
