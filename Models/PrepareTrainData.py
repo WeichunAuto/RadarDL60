@@ -54,6 +54,22 @@ class PrepareTrainData:
 
         return X_data, y_data
 
+    def get_val_data(self, participant):
+        # parent_dir = str(Path.cwd().parent)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+        dataset_directory = parent_dir + "/publicdata/dataset/cross_train/"
+        file_name = "raw_" + str(participant) + "_Resting.csv"
+        file_path = os.path.join(dataset_directory, file_name)
+        df = pd.read_csv(file_path)
+        last_column = "f_590"
+        df_X_val = df.loc[:, "f_1":last_column]
+
+        X_val = df_X_val.to_numpy()
+        y_val = df["hr"].to_numpy()
+
+        return X_val, y_val
+
     def get_test_data(self, participant):
         parent_dir = str(Path.cwd().parent)
         dataset_directory = parent_dir + "/publicdata/dataset/test/"
@@ -72,8 +88,8 @@ class PrepareTrainData:
         X_train, y_train = self.get_trainval_data()
         return self.get_dataloader(X_train, y_train)
 
-    def val_dataloader(self):
-        X_val, y_val = self.get_trainval_data(is_train=False)
+    def val_dataloader(self, participant):
+        X_val, y_val = self.get_val_data(participant)
         return self.get_dataloader(X_val, y_val)
 
     def test_dataloader(self, participant):
@@ -108,6 +124,9 @@ class PrepareTrainData:
             # print(f'training file_name-{i} = {file_path}')
             df = pd.read_csv(file_path)
             df_dataset = pd.concat([df_dataset, df], ignore_index=True)
+
+            if i>1:
+                break
 
         last_column = "f_590"
         df_train_X = df_dataset.loc[:, "f_1":last_column]
