@@ -6,13 +6,12 @@ import pandas as pd
 
 import sys
 
-from Models.GRU.RadarGRU import RadarGRU
-
 sys.path.append('/home/syt0722/Weichun/60pts')
 from Models.ExecuteTrainModels import ExecuteTrainModels
 from Models.ModelNames import ModelNames
 from Models.LSTM.RadarLSTM import RadarLSTM
 from Models.BiLSTM.RadarBiLSTM import RadarBiLSTM
+from Models.GRU.RadarGRU import RadarGRU
 
 
 def get_model(model_name):
