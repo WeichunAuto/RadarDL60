@@ -6,6 +6,8 @@ import pandas as pd
 
 import sys
 
+from Models.GRU.RadarGRU import RadarGRU
+
 sys.path.append('/home/syt0722/Weichun/60pts')
 from Models.ExecuteTrainModels import ExecuteTrainModels
 from Models.ModelNames import ModelNames
@@ -19,12 +21,14 @@ def get_model(model_name):
         model = RadarLSTM()
     elif model_name == ModelNames.BiLSTM.value:
         model = RadarBiLSTM()
+    elif model_name == ModelNames.GRU.value:
+        model = RadarGRU()
 
     return model
 
 
 epochs = 2
-model_name = ModelNames.BiLSTM.value
+model_name = ModelNames.GRU.value
 my_model = get_model(model_name)
 
 pd_columns = ["t_loss", "v_loss", "p_id"]
