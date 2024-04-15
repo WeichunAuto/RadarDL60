@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 
 import sys
-
 sys.path.append('/home/syt0722/Weichun/60pts')
 from Models.ExecuteTrainModels import ExecuteTrainModels
 from Models.ModelNames import ModelNames
 from Models.LSTM.RadarLSTM import RadarLSTM
 from Models.BiLSTM.RadarBiLSTM import RadarBiLSTM
 from Models.GRU.RadarGRU import RadarGRU
+from Models.TPALSTM.RadarTpaLSTM import RadarTpaLSTM
 
 
 def get_model(model_name):
@@ -22,12 +22,14 @@ def get_model(model_name):
         model = RadarBiLSTM()
     elif model_name == ModelNames.GRU.value:
         model = RadarGRU()
+    elif model_name == ModelNames.TPALSTM.value:
+        model = RadarTpaLSTM()
 
     return model
 
 
 epochs = 2
-model_name = ModelNames.GRU.value
+model_name = ModelNames.TPALSTM.value
 my_model = get_model(model_name)
 
 pd_columns = ["t_loss", "v_loss", "p_id"]

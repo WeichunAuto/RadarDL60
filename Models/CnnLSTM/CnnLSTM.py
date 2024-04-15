@@ -1,7 +1,6 @@
 from torch import nn
 import torch
 
-
 class CnnLSTM(nn.Module):
 
     def __init__(self, n_features=118, out_channels=590, kernel_size=1, n_hidden=1024, n_layers=3, dropout=0.):
