@@ -30,7 +30,6 @@ def get_model(model_name):
 
 epochs = 2
 model_name = ModelNames.TPALSTM.value
-my_model = get_model(model_name)
 
 pd_columns = ["t_loss", "v_loss", "p_id"]
 pd_values = None
@@ -46,6 +45,7 @@ if not os.path.exists(save_path):
 
 for participant_id in participant_ids:
     ids = [participant_id for i in range(epochs)]
+    my_model = get_model(model_name)
     et = ExecuteTrainModels(my_model, model_name, participant_id, epochs=epochs)
     t_loss, v_loss, _ = et.start_training()
 
