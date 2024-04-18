@@ -5,8 +5,10 @@ import torch.optim as optim
 from tqdm import tqdm
 
 import sys
+
 sys.path.append('/home/syt0722/Weichun/60pts')
 from Models.PrepareTrainData import PrepareTrainData
+from Models.ModelNames import ModelNames
 
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -41,6 +43,9 @@ class ExecuteTrainModels:
             self.model = self.model.cuda()
             self.loss_fun = self.loss_fun.cuda()
         optimizer = optim.ASGD(self.model.parameters(), lr=self.lr)
+        if self.model_name == ModelNames.NBEATS.value:
+            optimizer = optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=0.95)
+
 
         return optimizer
 

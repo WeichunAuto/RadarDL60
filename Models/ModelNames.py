@@ -7,8 +7,8 @@ class ModelNames(Enum):
     GRU = "GRU"
     DILATE = "DILATE"
     TPALSTM = "TPALSTM"
-    HARHN = "HARHN"
+    NBEATS = "NBEATS"
     CnnLSTM = "CnnLSTM"
 
-
-# print(ModelNames.LSTM.value)
+# all_v = list(ModelNames)
+# print(all_v[0].value)
