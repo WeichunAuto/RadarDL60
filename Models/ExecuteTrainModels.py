@@ -43,7 +43,7 @@ class ExecuteTrainModels:
             self.model = self.model.cuda()
             self.loss_fun = self.loss_fun.cuda()
         optimizer = optim.ASGD(self.model.parameters(), lr=self.lr)
-        if self.model_name == ModelNames.NBEATS.value:
+        if self.model_name == ModelNames.DILATE.value:
             optimizer = optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=0.95)
 
 
@@ -81,7 +81,7 @@ class ExecuteTrainModels:
                 torch.save(self.model.state_dict(), save_model_path)  # 保存训练后的模型
 
             if (epoch + 1) % 1 == 0:
-                print("t_loss: " + str(t_loss) + ", v_loss: " + str(v_loss))
+                print("t_loss: " + str(round(t_loss, 4)) + ", v_loss: " + str(round(v_loss, 4)))
 
             if t_loss > 20000:
                 t_loss = 20000
