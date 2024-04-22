@@ -43,12 +43,14 @@ def start_training(model_name, epochs, participant=-1):
     pd_values = None
     current_dir = str(Path.cwd())
     save_path = os.path.join(current_dir, model_name, "trained_models")
-    saved_file_path = os.path.join(save_path, "loss_" + model_name + ".csv")
+
     # all participants ID
     if participant == -1:
         participant_ids = [i for i in range(1, 31) if i != 3]
+        saved_file_path = os.path.join(save_path, "loss_" + model_name + ".csv")
     else:
         participant_ids = [participant]
+        saved_file_path = os.path.join(save_path, "loss_" + model_name + "_" + str(participant) + ".csv")
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     for participant_id in participant_ids:
@@ -66,7 +68,7 @@ def start_training(model_name, epochs, participant=-1):
     df.to_csv(saved_file_path)
 
 
-epochs = 50
+epochs = 2
 
 # model_name = ModelNames.GRU.value
 # start_training(model_name, epochs)
@@ -84,4 +86,5 @@ epochs = 50
 # start_training(model_name, epochs)
 
 model_name = ModelNames.DILATE.value
+# start_training(model_name, epochs, participant=2)
 start_training(model_name, epochs)

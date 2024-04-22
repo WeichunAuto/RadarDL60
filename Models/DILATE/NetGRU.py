@@ -35,12 +35,17 @@ class DecoderRNN(nn.Module):
         return output, hidden
     
 class NetGRU(nn.Module):
-    def __init__(self, device, input_size=118, hidden_size=1024, target_length=1, batch_size=16):
+    def __init__(self, input_size=118, hidden_size=1024, target_length=1, batch_size=16):
         super(NetGRU, self).__init__()
-        self.encoder = EncoderRNN(input_size=input_size, hidden_size=hidden_size, num_grulstm_layers=2, batch_size=batch_size).to(device)
-        self.decoder = DecoderRNN(input_size=input_size, hidden_size=hidden_size, num_grulstm_layers=2, fc_units=16, output_size=1).to(device)
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+        self.lr = 0.001
+        self.loss_fun = nn.MSELoss()
+
+        self.encoder = EncoderRNN(input_size=input_size, hidden_size=hidden_size, num_grulstm_layers=2, batch_size=batch_size).to(self.device)
+        self.decoder = DecoderRNN(input_size=input_size, hidden_size=hidden_size, num_grulstm_layers=2, fc_units=16, output_size=1).to(self.device)
         self.target_length = target_length
-        self.device = device
+
 
         
     def forward(self, x):
