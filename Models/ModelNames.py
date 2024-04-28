@@ -2,13 +2,13 @@ from enum import Enum
 
 
 class ModelNames(Enum):
+    TPALSTM = "TPALSTM"
     LSTM = "LSTM"
     BiLSTM = "BiLSTM"
     GRU = "GRU"
     DILATE = "DILATE"
-    TPALSTM = "TPALSTM"
     NBEATS = "NBEATS"
-    CnnLSTM = "CnnLSTM"
+    # CnnLSTM = "CnnLSTM"
 
 # all_v = list(ModelNames)
 # print(all_v[0].value)

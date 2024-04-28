@@ -7,7 +7,7 @@ class RadarTpaLSTM(nn.Module):
     def __init__(self, n_features=118, num_filters=3, n_hidden=1024, obs_len=5, n_layers=3, dropout=0.):
         super(RadarTpaLSTM, self).__init__()
 
-        self.lr = 0.0001
+        self.lr = 0.001
         self.loss_fun = nn.MSELoss()
         
         self.dropout = dropout
