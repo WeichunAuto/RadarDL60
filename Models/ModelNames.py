@@ -2,13 +2,25 @@ from enum import Enum
 
 
 class ModelNames(Enum):
-    TPALSTM = "TPALSTM"
+
     LSTM = "LSTM"
     BiLSTM = "BiLSTM"
+    TPALSTM = "TPALSTM"
     GRU = "GRU"
     DILATE = "DILATE"
     NBEATS = "NBEATS"
+    # HARHN = "HARHN"
     # CnnLSTM = "CnnLSTM"
 
-# all_v = list(ModelNames)
-# print(all_v[0].value)
+
+class PlotMarker(Enum):
+    TPALSTM = "o"
+    LSTM = "s"
+    BiLSTM = "*"
+    GRU = "h"
+    DILATE = "d"
+    NBEATS = "p"
+
+# all_v = list(PlotMarker)
+# s = ModelNames.NBEATS.value
+# print(PlotMarker[s].value)

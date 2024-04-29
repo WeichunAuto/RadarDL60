@@ -7,10 +7,12 @@ import pandas as pd
 from Models.BiLSTM.RadarBiLSTM import RadarBiLSTM
 from Models.DILATE.NetGRU import NetGRU
 from Models.GRU.RadarGRU import RadarGRU
-from Models.ModelNames import ModelNames
+from Models.ModelNames import ModelNames, PlotMarker
 from Models.NBEATS.NBeats import NBeats
 from Models.PrepareTrainData import PrepareTrainData
 from Models.LSTM.RadarLSTM import RadarLSTM
+from Models.CnnLSTM.CnnLSTM import CnnLSTM
+from Models.HARHN.HARHN import HARHN
 
 import matplotlib.pyplot as plt
 
@@ -25,10 +27,15 @@ class EvaModel:
         participant_ids = [i for i in range(1, 31) if i != 3]
         MSEs = []
         MAEs = []
+        RMSEs = []
         for participant in participant_ids:
-            MSE, MAE = EvaModel.preds_of_mase(model_name, participant)
+            MSE, MAE, RMSE = EvaModel.preds_of_mase(model_name, participant)
             MSEs.append(MSE)
             MAEs.append(MAE)
+            RMSEs.append(RMSE)
+        print(f"{model_name} MSE mean: {sum(MSEs)/len(MSEs)}")
+        print(f"{model_name} MAE mean: {sum(MAEs) / len(MAEs)}")
+        print(f"{model_name} RMSE mean: {sum(RMSEs) / len(RMSEs)}")
         return MSEs, MAEs
 
     @staticmethod
@@ -43,8 +50,8 @@ class EvaModel:
         MSE = round(np.mean((y_preds - y_real) ** 2), 2)
         RMSE = round(np.sqrt(MSE), 2)
         MAE = round(np.mean(np.abs(y_preds - y_real)), 2)
-        print(f"MSE = {MSE}, RMSE = {RMSE}, MAE = {MAE}")
-        return MSE, MAE
+        # print(f"MSE = {MSE}, RMSE = {RMSE}, MAE = {MAE}")
+        return MSE, MAE, RMSE
 
     @staticmethod
     def plot_model_preds(model_name, participant):
@@ -76,6 +83,8 @@ class EvaModel:
             model = NBeats()
         elif model_name == ModelNames.TPALSTM.value:
             model = RadarTpaLSTM()
+        elif model_name == ModelNames.HARHN.value:
+            model = HARHN()
 
         model_file_name = [file_name for file_name in os.listdir(models_directory) if file_name.startswith(model_name + "_model") and file_name.endswith("val_" + str(participant) + ".tar")][0]
 
@@ -120,14 +129,12 @@ class EvaModel:
         for i in range(len(model_name_all)):
             model_name = model_name_all[i].value
 
-            # if model_name == ModelNames.LSTM.value or model_name == ModelNames.BiLSTM.value or model_name == ModelNames.GRU.value:
-            #     continue
-
             MSEs, MAEs = EvaModel.preds_all_mases(model_name)
+            marker = PlotMarker[model_name].value
             if method.lower() == "mae":
-                ax.plot(participant_ids, MAEs, label=model_name, marker='o')
+                ax.plot(participant_ids, MAEs, label=model_name, linewidth=.7, marker=marker)
             else:
-                ax.plot(participant_ids, MSEs, label=model_name, marker='o')
+                ax.plot(participant_ids, MSEs, label=model_name, linewidth=.7, marker=marker)
             print(f"{model_name} done...")
 
         ax.set_xlabel("Participants ID")
@@ -136,6 +143,7 @@ class EvaModel:
         ax.legend()
         plt.xticks(participant_ids)
         plt.show()
+        plt.plot()
 
     @staticmethod
     def plot_loss_of_all_models(type, participant):
@@ -150,9 +158,6 @@ class EvaModel:
         for i in range(len(model_name_all)):
             model_name = model_name_all[i].value
 
-            # if model_name != ModelNames.LSTM.value and model_name != ModelNames.GRU.value:
-            #     continue
-
             models_directory = os.path.join(base_directory, model_name, "trained_models")
             loss_file_name = "loss_" + model_name + ".csv"
             loss_file_path = os.path.join(models_directory, loss_file_name)
@@ -160,12 +165,51 @@ class EvaModel:
             filtered_participant = (df["p_id"] == participant)
             y_values = df.loc[filtered_participant, [column_plot]].to_numpy()
 
-            ax.plot(epoches, y_values, label=model_name)
+            ax.plot(epoches, y_values, label=model_name, linewidth=.8)
 
-        label_name = "training loss" if type == "t" else "validation loss"
-        ax.set_xlabel("epoches")
+        label_name = "Training loss" if type == "t" else "validation loss"
+        ax.set_xlabel("Epoches")
         ax.set_ylabel(label_name)
         ax.set_title("The " + label_name + "of different models for participant " + str(participant))
+        ax.legend()
+        plt.show()
+
+    @staticmethod
+    def plot_mean_loss_of_all_models(type):
+        epoches = [i for i in range(500)]
+        participant_ids = [i for i in range(1, 31) if i != 3]
+
+        fig, ax = plt.subplots()
+        base_directory = os.path.dirname(__file__)
+        column_plot = "t_loss" if type == "t" else "v_loss"
+        model_name_all = list(ModelNames)
+
+        for i in range(len(model_name_all)):
+            model_name = model_name_all[i].value
+
+            loss_values = np.array([])
+
+            models_directory = os.path.join(base_directory, model_name, "trained_models")
+            loss_file_name = "loss_" + model_name + ".csv"
+            loss_file_path = os.path.join(models_directory, loss_file_name)
+            df = pd.read_csv(loss_file_path)
+
+            for index, participant in enumerate(participant_ids):
+                filtered_participant = (df["p_id"] == participant)
+                y_values = df.loc[filtered_participant, [column_plot]].to_numpy()
+
+                # Boolean indexing to identify elements greater than 10
+                mask = y_values > 20000
+                y_values[mask] = 20000
+
+                loss_values = y_values if loss_values.size == 0 else loss_values + y_values
+
+            ax.plot(epoches, loss_values/len(participant_ids), label=model_name, linewidth=.8)
+
+        label_name = "The Average of " + "Training Loss" if type == "t" else "Validation Loss"
+        ax.set_xlabel("Epoches")
+        ax.set_ylabel(label_name)
+        ax.set_title(label_name + " for Different Models.")
         ax.legend()
         plt.show()
 
@@ -179,10 +223,10 @@ class EvaModel:
 # model = RadarGRU(n_features=118)
 # model_path = "GRU/gru_best_t_model_20240401-16:37_0.03_.tar"
 
-EvaModel.plot_mase_of_all_models("mse")
-# EvaModel.plot_loss_of_all_models("t", 1)
+# EvaModel.plot_mase_of_all_models("mse")
+# EvaModel.plot_loss_of_all_models("v", 30)
+EvaModel.plot_mean_loss_of_all_models("t")
 
-
-# model_name = ModelNames.NBEATS.value
-# EvaModel.plot_model_preds(model_name, 1)
+# model_name = ModelNames.HARHN.value
+# EvaModel.plot_model_preds(model_name, 2)
 # EvaModel.preds_of_mase(model_name, 1)
