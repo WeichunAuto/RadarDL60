@@ -83,8 +83,10 @@ class EvaModel:
             model = NBeats()
         elif model_name == ModelNames.TPALSTM.value:
             model = RadarTpaLSTM()
-        elif model_name == ModelNames.HARHN.value:
-            model = HARHN()
+        # elif model_name == ModelNames.HARHN.value:
+        #     model = HARHN()
+        elif model_name == ModelNames.CnnLSTM.value:
+            model = CnnLSTM()
 
         model_file_name = [file_name for file_name in os.listdir(models_directory) if file_name.startswith(model_name + "_model") and file_name.endswith("val_" + str(participant) + ".tar")][0]
 
@@ -128,6 +130,8 @@ class EvaModel:
         model_name_all = list(ModelNames)
         for i in range(len(model_name_all)):
             model_name = model_name_all[i].value
+
+
 
             MSEs, MAEs = EvaModel.preds_all_mases(model_name)
             marker = PlotMarker[model_name].value
@@ -204,7 +208,7 @@ class EvaModel:
 
                 loss_values = y_values if loss_values.size == 0 else loss_values + y_values
 
-            ax.plot(epoches, loss_values/len(participant_ids), label=model_name, linewidth=.8)
+            ax.plot(epoches, loss_values/len(participant_ids), label=model_name, linewidth=.9)
 
         label_name = "The Average of " + "Training Loss" if type == "t" else "Validation Loss"
         ax.set_xlabel("Epoches")
@@ -223,9 +227,9 @@ class EvaModel:
 # model = RadarGRU(n_features=118)
 # model_path = "GRU/gru_best_t_model_20240401-16:37_0.03_.tar"
 
-# EvaModel.plot_mase_of_all_models("mse")
+EvaModel.plot_mase_of_all_models("mse")
 # EvaModel.plot_loss_of_all_models("v", 30)
-EvaModel.plot_mean_loss_of_all_models("t")
+# EvaModel.plot_mean_loss_of_all_models("v")
 
 # model_name = ModelNames.HARHN.value
 # EvaModel.plot_model_preds(model_name, 2)
