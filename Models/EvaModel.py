@@ -57,8 +57,11 @@ class EvaModel:
     def plot_model_preds(model_name, participant):
         y_preds, y_real = EvaModel.get_model_preds(model_name, participant)
 
-        plt.plot(y_real, color='green', label='Hr Reference')
-        plt.plot(y_preds, color='orange', label='Hr Prediction', alpha=0.8)
+        MSE = round(np.mean((y_preds - y_real) ** 2), 2)
+        print(f'MSE = {MSE}')
+
+        plt.plot(y_real[195:215], color='green', label='Hr Reference')
+        plt.plot(y_preds[195:215], color='orange', label='Hr Prediction', alpha=0.8)
         plt.xlabel("Seconds")
         plt.ylabel("HR")
         plt.grid()
@@ -136,9 +139,9 @@ class EvaModel:
             MSEs, MAEs = EvaModel.preds_all_mases(model_name)
             marker = PlotMarker[model_name].value
             if method.lower() == "mae":
-                ax.plot(participant_ids, MAEs, label=model_name, linewidth=.7, marker=marker)
+                ax.plot(participant_ids, MAEs, label=model_name, linewidth=1, marker=marker)
             else:
-                ax.plot(participant_ids, MSEs, label=model_name, linewidth=.7, marker=marker)
+                ax.plot(participant_ids, MSEs, label=model_name, linewidth=1, marker=marker)
             print(f"{model_name} done...")
 
         ax.set_xlabel("Participants ID")
@@ -183,38 +186,84 @@ class EvaModel:
         epoches = [i for i in range(500)]
         participant_ids = [i for i in range(1, 31) if i != 3]
 
-        fig, ax = plt.subplots()
         base_directory = os.path.dirname(__file__)
-        column_plot = "t_loss" if type == "t" else "v_loss"
+
+        if type == "t":
+            column_plot = ["t_loss"]
+            fig, ax = plt.subplots(figsize=(10, 5))
+        elif type == "v":
+            column_plot = ["v_loss"]
+            fig, ax = plt.subplots(figsize=(10, 5))
+        elif type == "a":
+            column_plot = ["t_loss", "v_loss"]
+            fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10, 5), sharey=False)
+            fig.subplots_adjust(wspace=0.4)
+
         model_name_all = list(ModelNames)
 
         for i in range(len(model_name_all)):
             model_name = model_name_all[i].value
 
             loss_values = np.array([])
+            t_loss_values = np.array([])
+            v_loss_values = np.array([])
 
             models_directory = os.path.join(base_directory, model_name, "trained_models")
             loss_file_name = "loss_" + model_name + ".csv"
             loss_file_path = os.path.join(models_directory, loss_file_name)
             df = pd.read_csv(loss_file_path)
 
-            for index, participant in enumerate(participant_ids):
+            for idx, participant in enumerate(participant_ids):
                 filtered_participant = (df["p_id"] == participant)
-                y_values = df.loc[filtered_participant, [column_plot]].to_numpy()
+                y_values = df.loc[filtered_participant, [column_plot[0]]].to_numpy()
+                if len(y_values) > 500:
+                    y_values = y_values[0:500]
 
                 # Boolean indexing to identify elements greater than 10
                 mask = y_values > 20000
                 y_values[mask] = 20000
-
                 loss_values = y_values if loss_values.size == 0 else loss_values + y_values
 
-            ax.plot(epoches, loss_values/len(participant_ids), label=model_name, linewidth=.9)
+                if type == "a":
+                    t_y_values = df.loc[filtered_participant, [column_plot[0]]].to_numpy()
+                    v_y_values = df.loc[filtered_participant, [column_plot[1]]].to_numpy()
 
-        label_name = "The Average of " + "Training Loss" if type == "t" else "Validation Loss"
-        ax.set_xlabel("Epoches")
-        ax.set_ylabel(label_name)
-        ax.set_title(label_name + " for Different Models.")
-        ax.legend()
+                    if len(t_y_values) > 500:
+                        t_y_values = t_y_values[0:500]
+                        v_y_values = v_y_values[0:500]
+
+                    mask_t = t_y_values > 20000
+                    t_y_values[mask_t] = 20000
+
+                    mask_v = v_y_values > 20000
+                    v_y_values[mask_v] = 20000
+
+                    t_loss_values = t_y_values if t_loss_values.size == 0 else t_loss_values + t_y_values
+                    v_loss_values = v_y_values if v_loss_values.size == 0 else v_loss_values + v_y_values
+
+            if type == "t" or type == "v":
+                ax.plot(epoches, loss_values/len(participant_ids), label=model_name, linewidth=1)
+            elif type == "a":
+                # ax1 = plt.subplot(121)
+                ax[0].plot(epoches, t_loss_values / len(participant_ids), label=model_name, linewidth=1)
+                # ax2 = plt.subplot(122)
+                ax[1].plot(epoches, v_loss_values / len(participant_ids), label=model_name, linewidth=1)
+
+        if type == "t" or type == "v":
+            label_name = "The Average of Training Loss" if type == "t" else "The Average of Validation Loss"
+            ax.set_xlabel("Epoches")
+            ax.set_ylabel(label_name)
+            ax.set_title(label_name + " for Different Models.")
+            ax.legend()
+        elif type == "a":
+            ax[0].set_xlabel("Epoches")
+            ax[0].set_ylabel("The Average of Training Loss")
+            ax[0].set_title("Average Training Loss for Different Models.")
+            ax[0].legend()
+            ax[1].set_xlabel("Epoches")
+            ax[1].set_ylabel("The Average of Validation Loss")
+            ax[1].set_title("Average Validation Loss for Different Models.")
+            ax[1].legend()
         plt.show()
 
 
@@ -227,10 +276,10 @@ class EvaModel:
 # model = RadarGRU(n_features=118)
 # model_path = "GRU/gru_best_t_model_20240401-16:37_0.03_.tar"
 
-EvaModel.plot_mase_of_all_models("mse")
+# EvaModel.plot_mase_of_all_models("mse")
 # EvaModel.plot_loss_of_all_models("v", 30)
-# EvaModel.plot_mean_loss_of_all_models("v")
+EvaModel.plot_mean_loss_of_all_models("v")
 
-# model_name = ModelNames.HARHN.value
-# EvaModel.plot_model_preds(model_name, 2)
+# model_name = ModelNames.LSTM.value
+# EvaModel.plot_model_preds(model_name, 5)
 # EvaModel.preds_of_mase(model_name, 1)
