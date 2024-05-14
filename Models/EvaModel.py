@@ -15,6 +15,7 @@ from Models.CnnLSTM.CnnLSTM import CnnLSTM
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 
 from Models.TPALSTM.RadarTpaLSTM import RadarTpaLSTM
 
@@ -128,7 +129,11 @@ class EvaModel:
 
     @staticmethod
     def plot_mase_of_all_models(method):
-        fig, ax = plt.subplots()
+        if method.lower() == "all":
+            fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(16, 8), sharex=False)
+            fig.subplots_adjust(wspace=0.3, hspace=0.4)
+        else:
+            fig, ax = plt.subplots()
         # plt.figure(figsize=(10, 3))
         participant_ids = [i for i in range(1, 31) if i != 3]
         model_name_all = list(ModelNames)
@@ -139,21 +144,62 @@ class EvaModel:
             marker = PlotMarker[model_name].value
             if method.lower() == "mae":
                 ax.plot(participant_ids, MAEs, label=model_name, linewidth=1, marker=marker)
-            elif method.lower() == "rmse":
+            elif method.lower() == "mse":
                 ax.plot(participant_ids, MSEs, label=model_name, linewidth=1, marker=marker)
             elif method.lower() == "rmse":
                 ax.plot(participant_ids, RMSEs, label=model_name, linewidth=1, marker=marker)
             elif method.lower() == "r2":
                 ax.plot(participant_ids, R2s, label=model_name, linewidth=1, marker=marker)
+            elif method.lower() == "all":
+                ax[0,0].plot(participant_ids, MSEs, label=model_name, linewidth=0.8, marker=marker)
+                ax[0,1].plot(participant_ids, RMSEs, label=model_name, linewidth=0.8, marker=marker)
+                ax[1,0].plot(participant_ids, MAEs, label=model_name, linewidth=0.8, marker=marker)
+                ax[1,1].plot(participant_ids, R2s, label=model_name, linewidth=0.8, marker=marker)
+
             print(f"{model_name} done...")
 
-        ax.set_xlabel("Participants ID")
-        ax.set_ylabel(method.upper() + " values")
-        ax.set_title(method.upper() + " Values for Each Participant.")
-        ax.legend()
-        plt.xticks(participant_ids)
+        if method.lower() == "all":
+            me_name = "MSE"
+            ax[0,0].set_xlabel("Participants' IDs")
+            ax[0,0].set_ylabel(me_name + " Values")
+            ax[0,0].set_title(me_name + " Metrics for Each Participant.")
+            # ax[0,0].tick_params(axis='x', rotation=45)
+            ax[0,0].legend(loc='upper right')
+            ax[0, 0].set_xticks(participant_ids)
+
+            me_name = "RMSE"
+            ax[0,1].set_xlabel("Participants' IDs")
+            ax[0,1].set_ylabel(me_name + " Values")
+            ax[0,1].set_title(me_name + " Metrics for Each Participant.")
+            # ax[0,1].tick_params(axis='x', rotation=45)
+            ax[0,1].legend(loc='upper right')
+            ax[0, 1].set_xticks(participant_ids)
+
+            me_name = "MAE"
+            ax[1,0].set_xlabel("Participants' IDs")
+            ax[1,0].set_ylabel(me_name + " Values")
+            ax[1,0].set_title(me_name + " Metrics for Each Participant.")
+            # ax[1, 0].tick_params(axis='x', rotation=45)
+            ax[1,0].legend(loc='upper right')
+            ax[1, 0].set_xticks(participant_ids)
+
+            me_name = "$R^{2}$"
+            ax[1,1].set_xlabel("Participants' IDs")
+            ax[1,1].set_ylabel(r"" + me_name + " Values")
+            ax[1,1].set_title(r"" + me_name + " Metrics for Each Participant.")
+            # ax[1,1].tick_params(axis='x', rotation=45)
+            ax[1,1].legend(loc='lower right')
+            ax[1, 1].set_xticks(participant_ids)
+
+        else:
+            ax.set_xlabel("Participants' IDs")
+            ax.set_ylabel(method.upper() + " Values")
+            ax.set_title(method.upper() + " Metrics for Each Participant.")
+            ax.legend()
+        # font = fm.FontProperties(size=12)
+        # plt.xticks(participant_ids)
         plt.show()
-        plt.plot()
+        # plt.plot()
 
     @staticmethod
     def plot_loss_of_all_models(type, participant):
@@ -281,7 +327,7 @@ class EvaModel:
 # model = RadarGRU(n_features=118)
 # model_path = "GRU/gru_best_t_model_20240401-16:37_0.03_.tar"
 
-EvaModel.plot_mase_of_all_models("r2")
+EvaModel.plot_mase_of_all_models("all")
 # EvaModel.plot_loss_of_all_models("v", 30)
 # EvaModel.plot_mean_loss_of_all_models("a")
 
