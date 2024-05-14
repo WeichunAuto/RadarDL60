@@ -12,7 +12,7 @@ from Models.NBEATS.NBeats import NBeats
 from Models.PrepareTrainData import PrepareTrainData
 from Models.LSTM.RadarLSTM import RadarLSTM
 from Models.CnnLSTM.CnnLSTM import CnnLSTM
-from Models.HARHN.HARHN import HARHN
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 import matplotlib.pyplot as plt
 
@@ -28,30 +28,31 @@ class EvaModel:
         MSEs = []
         MAEs = []
         RMSEs = []
+        R2s = []
         for participant in participant_ids:
-            MSE, MAE, RMSE = EvaModel.preds_of_mase(model_name, participant)
+            MSE, MAE, RMSE, R2 = EvaModel.preds_of_mase(model_name, participant)
             MSEs.append(MSE)
             MAEs.append(MAE)
             RMSEs.append(RMSE)
+            R2s.append(R2)
+
         print(f"{model_name} MSE mean: {sum(MSEs)/len(MSEs)}")
         print(f"{model_name} MAE mean: {sum(MAEs) / len(MAEs)}")
         print(f"{model_name} RMSE mean: {sum(RMSEs) / len(RMSEs)}")
-        return MSEs, MAEs
+        print(f"{model_name} R2 mean: {sum(R2s) / len(R2s)}")
+        return MSEs, MAEs, RMSEs, R2s
 
     @staticmethod
     def preds_of_mase(model_name, participant):
         y_preds, y_real = EvaModel.get_model_preds(model_name, participant)
 
-        # y_real_max = np.max(y_real)
-        # y_real_min = np.min(y_real)
-        # y_real_mean = np.mean(y_real)
-        # print(f"y_real_max = {y_real_max}, y_real_min = {y_real_min}, y_real_mean = {y_real_mean}")
-
-        MSE = round(np.mean((y_preds - y_real) ** 2), 2)
-        RMSE = round(np.sqrt(MSE), 2)
-        MAE = round(np.mean(np.abs(y_preds - y_real)), 2)
-        # print(f"MSE = {MSE}, RMSE = {RMSE}, MAE = {MAE}")
-        return MSE, MAE, RMSE
+        # MSE = round(np.mean((y_preds - y_real) ** 2), 2)
+        MSE = mean_squared_error(y_real, y_preds)
+        RMSE = np.sqrt(MSE)
+        # MAE = round(np.mean(np.abs(y_preds - y_real)), 2)
+        MAE = mean_absolute_error(y_real, y_preds)
+        R2 = r2_score(y_real, y_preds)
+        return MSE, MAE, RMSE, R2
 
     @staticmethod
     def plot_model_preds(model_name, participant):
@@ -134,14 +135,16 @@ class EvaModel:
         for i in range(len(model_name_all)):
             model_name = model_name_all[i].value
 
-
-
-            MSEs, MAEs = EvaModel.preds_all_mases(model_name)
+            MSEs, MAEs, RMSEs, R2s = EvaModel.preds_all_mases(model_name)
             marker = PlotMarker[model_name].value
             if method.lower() == "mae":
                 ax.plot(participant_ids, MAEs, label=model_name, linewidth=1, marker=marker)
-            else:
+            elif method.lower() == "rmse":
                 ax.plot(participant_ids, MSEs, label=model_name, linewidth=1, marker=marker)
+            elif method.lower() == "rmse":
+                ax.plot(participant_ids, RMSEs, label=model_name, linewidth=1, marker=marker)
+            elif method.lower() == "r2":
+                ax.plot(participant_ids, R2s, label=model_name, linewidth=1, marker=marker)
             print(f"{model_name} done...")
 
         ax.set_xlabel("Participants ID")
@@ -257,12 +260,14 @@ class EvaModel:
             ax.legend()
         elif type == "a":
             ax[0].set_xlabel("Epoches")
-            ax[0].set_ylabel("The Average of Training Loss")
-            ax[0].set_title("Average Training Loss for Different Models.")
+            ax[0].set_ylabel("The Average of Training MSE Loss")
+            ax[0].set_title("Average Training MSE Loss for Different Models.")
+            # ax[0].text(1, 5.4, 'A', va='bottom', ha='right')
             ax[0].legend()
             ax[1].set_xlabel("Epoches")
-            ax[1].set_ylabel("The Average of Validation Loss")
-            ax[1].set_title("Average Validation Loss for Different Models.")
+            ax[1].set_ylabel("The Average of Validation MSE Loss")
+            ax[1].set_title("Average Validation MSE Loss for Different Models.")
+            # ax[0].text(1, 9.7, 'B', va='bottom', ha='right')
             ax[1].legend()
         plt.show()
 
@@ -276,9 +281,9 @@ class EvaModel:
 # model = RadarGRU(n_features=118)
 # model_path = "GRU/gru_best_t_model_20240401-16:37_0.03_.tar"
 
-# EvaModel.plot_mase_of_all_models("mse")
+EvaModel.plot_mase_of_all_models("r2")
 # EvaModel.plot_loss_of_all_models("v", 30)
-EvaModel.plot_mean_loss_of_all_models("v")
+# EvaModel.plot_mean_loss_of_all_models("a")
 
 # model_name = ModelNames.LSTM.value
 # EvaModel.plot_model_preds(model_name, 5)
