@@ -23,24 +23,116 @@ from Models.TPALSTM.RadarTpaLSTM import RadarTpaLSTM
 class EvaModel:
 
     @staticmethod
+    def plot_average_metric_for_each_model():
+        model_name_all = list(ModelNames)
+        mse_mean_array = []
+        rmse_mean_array = []
+        mae_mean_array = []
+        r2_mean_array = []
+
+        size = len(model_name_all)
+        MSE_mean_str = ""
+        RMSE_mean_str = ""
+        MAE_mean_str = ""
+        R2_mean_str = ""
+
+        for i in range(size):
+            model_name = model_name_all[i].value
+            MSEs, MAEs, RMSEs, R2s = EvaModel.preds_all_mases(model_name)
+
+            MSE_mean = sum(MSEs) / len(MSEs)
+            RMSE_mean = sum(RMSEs) / len(RMSEs)
+            MAE_mean = sum(MAEs) / len(MAEs)
+            R2_mean = sum(R2s) / len(R2s)
+
+            MSE_mean_str = MSE_mean_str + " & " + str(round(MSE_mean, 4))
+            RMSE_mean_str = RMSE_mean_str + " & " + str(round(RMSE_mean, 4))
+            MAE_mean_str = MAE_mean_str + " & " + str(round(MAE_mean, 4))
+            R2_mean_str = R2_mean_str + " & " + str(round(R2_mean, 4))
+
+            mse_mean_array.append(MSE_mean)
+            rmse_mean_array.append(RMSE_mean)
+            mae_mean_array.append(MAE_mean)
+            r2_mean_array.append(R2_mean)
+
+        print(f"\nMSE_mean_str = {MSE_mean_str}")
+        print(f"RMSE_mean_str = {RMSE_mean_str}")
+        print(f"MAE_mean_str = {MAE_mean_str}")
+        print(f"R2_mean_str = {R2_mean_str}")
+
+        fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(16, 8), sharex=False)
+        fig.subplots_adjust(wspace=0.2, hspace=0.4)
+        x = np.arange(-0.2, size - 1)
+        total_width, n = 1.4, 2
+        width = total_width / n
+
+        ax[0,0].bar(x, mse_mean_array, width=width, label="MSE Mean", color='orange')  #
+        ax[0,1].bar(x, rmse_mean_array, width=width, label="RMSE Mean", color='green')
+        ax[1,0].bar(x, mae_mean_array, width=width, label="MAE Mean", color='blue')
+        ax[1,1].bar(x, r2_mean_array, width=width, label=r"$R^2$ Mean", color='purple')
+
+        xticks = [model_name_all[i].value for i in range(size) ]
+        xline = [i for i in np.arange(size)]
+
+        ax[0, 0].set_xlabel("Model Name")
+        ax[0, 0].set_ylabel("MSE Average Values")
+        ax[0, 0].set_title("MSE Average Values for All Participants.")
+        # ax[0,0].tick_params(axis='x', rotation=45)
+        ax[0, 0].legend(loc='lower right')
+        ax[0, 0].set_xticks(xline, xticks)
+
+        ax[0, 1].set_xlabel("Model Names")
+        ax[0, 1].set_ylabel("RMSE Average Values")
+        ax[0, 1].set_title("RMSE Average Values for All Participants.")
+        ax[0, 1].legend(loc='lower right')
+        ax[0, 1].set_xticks(xline, xticks)
+
+        ax[1, 0].set_xlabel("Model Names")
+        ax[1, 0].set_ylabel("MAE Average Values")
+        ax[1, 0].set_title("MAE Average Values for All Participants.")
+        ax[1, 0].legend(loc='lower right')
+        ax[1, 0].set_xticks(xline, xticks)
+
+        ax[1, 1].set_xlabel("Model Names")
+        ax[1, 1].set_ylabel(r"$R^2$ Average Values")
+        ax[1, 1].set_title(r"$R^2$ Average Values for All Participants.")
+        ax[1, 1].legend(loc='upper right')
+        ax[1, 1].set_xticks(xline, xticks)
+
+        plt.show()
+
+    @staticmethod
     def preds_all_mases(model_name):
         # all participants ID
         participant_ids = [i for i in range(1, 31) if i != 3]
+        # start_id = 30
+        # participant_ids = [i for i in range(start_id, start_id+1) if i != 3]
         MSEs = []
         MAEs = []
         RMSEs = []
         R2s = []
         for participant in participant_ids:
             MSE, MAE, RMSE, R2 = EvaModel.preds_of_mase(model_name, participant)
+            MSE = np.round(MSE, 4)
+            RMSE = np.round(RMSE, 4)
+            MAE = np.round(MAE, 4)
+            R2 = np.round(R2, 4)
+
             MSEs.append(MSE)
             MAEs.append(MAE)
             RMSEs.append(RMSE)
             R2s.append(R2)
 
-        print(f"{model_name} MSE mean: {sum(MSEs)/len(MSEs)}")
-        print(f"{model_name} MAE mean: {sum(MAEs) / len(MAEs)}")
-        print(f"{model_name} RMSE mean: {sum(RMSEs) / len(RMSEs)}")
-        print(f"{model_name} R2 mean: {sum(R2s) / len(R2s)}")
+            print(f"model_name = {model_name}, participant = {participant}")
+            # print(f"participant = {participant}, model = {model_name}, MSE = " + str(MSE))
+            # print(f"participant = {participant}, model = {model_name}, RMSE = " + str(RMSE))
+            # print(f"participant = {participant}, model = {model_name}, MAE = " + str(MAE))
+            # print(f"participant = {participant}, model = {model_name}, R2 = " + str(R2))
+
+        # print(f"{model_name} MSE mean: {sum(MSEs)/len(MSEs)}")
+        # print(f"{model_name} MAE mean: {sum(MAEs) / len(MAEs)}")
+        # print(f"{model_name} RMSE mean: {sum(RMSEs) / len(RMSEs)}")
+        # print(f"{model_name} R2 mean: {sum(R2s) / len(R2s)}")
         return MSEs, MAEs, RMSEs, R2s
 
     @staticmethod
@@ -131,7 +223,7 @@ class EvaModel:
     def plot_mase_of_all_models(method):
         if method.lower() == "all":
             fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(16, 8), sharex=False)
-            fig.subplots_adjust(wspace=0.3, hspace=0.4)
+            fig.subplots_adjust(wspace=0.2, hspace=0.4)
         else:
             fig, ax = plt.subplots()
         # plt.figure(figsize=(10, 3))
@@ -327,10 +419,43 @@ class EvaModel:
 # model = RadarGRU(n_features=118)
 # model_path = "GRU/gru_best_t_model_20240401-16:37_0.03_.tar"
 
-EvaModel.plot_mase_of_all_models("all")
+# EvaModel.plot_mase_of_all_models("all")
 # EvaModel.plot_loss_of_all_models("v", 30)
 # EvaModel.plot_mean_loss_of_all_models("a")
 
 # model_name = ModelNames.LSTM.value
 # EvaModel.plot_model_preds(model_name, 5)
 # EvaModel.preds_of_mase(model_name, 1)
+
+
+# model_name_all = list(ModelNames)
+# MSE_str = None
+# RMSE_str = None
+# MAE_str = None
+# R2_str = None
+# for i in range(len(model_name_all)):
+#     model_name = model_name_all[i].value
+#     MSEs, MAEs, RMSEs, R2s = EvaModel.preds_all_mases(model_name)
+#     if MSE_str is None:
+#         MSE_str = "& MSE & " + str(MSEs[0])
+#         RMSE_str = "& RMSE & " + str(RMSEs[0])
+#         MAE_str = "& MAE & " + str(MAEs[0])
+#         R2_str = "& $R^2$ & " + str(R2s[0])
+#     else:
+#         MSE_str = MSE_str + " & " + str(MSEs[0])
+#         RMSE_str = RMSE_str + " & " + str(RMSEs[0])
+#         MAE_str = MAE_str + " & " + str(MAEs[0])
+#         R2_str = R2_str + " & " + str(R2s[0])
+#
+# MSE_str = MSE_str + " \\\\"
+# RMSE_str = RMSE_str + " \\\\"
+# MAE_str = MAE_str + " \\\\"
+# R2_str = R2_str + " \\\\"
+# print(f"MSE_str = {MSE_str}")
+# print(f"RMSE_str = {RMSE_str}")
+# print(f"MAE_str = {MAE_str}")
+# print(f"R2_str = {R2_str}")
+# print("")
+# print(MSE_str + "\n" + RMSE_str + "\n" + MAE_str + "\n" + R2_str)
+
+EvaModel.plot_average_metric_for_each_model()
