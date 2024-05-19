@@ -66,12 +66,12 @@ class EvaModel:
         total_width, n = 1.4, 2
         width = total_width / n
 
-        ax[0,0].bar(x, mse_mean_array, width=width, label="MSE Mean", color='orange')  #
-        ax[0,1].bar(x, rmse_mean_array, width=width, label="RMSE Mean", color='green')
-        ax[1,0].bar(x, mae_mean_array, width=width, label="MAE Mean", color='blue')
-        ax[1,1].bar(x, r2_mean_array, width=width, label=r"$R^2$ Mean", color='purple')
+        ax[0, 0].bar(x, mse_mean_array, width=width, label="MSE Mean", color='orange')  #
+        ax[0, 1].bar(x, rmse_mean_array, width=width, label="RMSE Mean", color='green')
+        ax[1, 0].bar(x, mae_mean_array, width=width, label="MAE Mean", color='blue')
+        ax[1, 1].bar(x, r2_mean_array, width=width, label=r"$R^2$ Mean", color='purple')
 
-        xticks = [model_name_all[i].value for i in range(size) ]
+        xticks = [model_name_all[i].value for i in range(size)]
         xline = [i for i in np.arange(size)]
 
         ax[0, 0].set_xlabel("Model Name")
@@ -154,8 +154,8 @@ class EvaModel:
         MSE = round(np.mean((y_preds - y_real) ** 2), 2)
         print(f'MSE = {MSE}')
 
-        plt.plot(y_real[195:215], color='green', label='Hr Reference')
-        plt.plot(y_preds[195:215], color='orange', label='Hr Prediction', alpha=0.8)
+        plt.plot(y_real, color='green', label='Hr Reference')
+        plt.plot(y_preds, color='orange', label='Hr Prediction', alpha=0.8)
         plt.xlabel("Seconds")
         plt.ylabel("HR")
         plt.grid()
@@ -164,7 +164,88 @@ class EvaModel:
         plt.show()
 
     @staticmethod
-    def get_model_preds(model_name, participant):
+    def plot_model_preds_for_participant_on_traval(model_name, participant):
+        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 4), sharey=True)
+        fig.subplots_adjust(wspace=0.2, hspace=0.4)
+
+        y_preds, y_real = EvaModel.get_model_preds(model_name, participant, type='t')
+        plot_period = 200
+        y_preds = y_preds[0:plot_period]
+        y_real = y_real[0:plot_period]
+        ax[0].plot(y_real, color='green', label='HR Reference Wave')
+        ax[0].plot(y_preds, color='orange', label='HR Prediction Wave', alpha=0.8)
+        ax[0].set_xlabel("Seconds")
+        ax[0].set_ylabel("HR Values")
+        ax[0].set_title("Prediction Results Using Participant 12 \nas the Training Dataset")
+        ax[0].legend(loc='upper right')
+
+        y_preds, y_real = EvaModel.get_model_preds(model_name, participant)
+        y_preds = y_preds[0:plot_period]
+        y_real = y_real[0:plot_period]
+        ax[1].plot(y_real, color='green', label='HR Reference Wave')
+        ax[1].plot(y_preds, color='orange', label='HR Prediction Wave', alpha=0.8)
+        ax[1].set_xlabel("Seconds")
+        ax[1].set_ylabel("HR Values")
+        ax[1].set_title("Prediction Results Using Participant 12 \nas the Validation Dataset")
+        ax[1].legend(loc='upper right')
+
+        plt.show()
+
+
+    @staticmethod
+    def get_idea_model_preds(model_name):
+        model = None
+        base_directory = os.path.dirname(__file__)
+        models_directory = os.path.join(base_directory, model_name, "trained_models", "idea_noise")
+        if model_name == ModelNames.LSTM.value:
+            model = RadarLSTM()
+        elif model_name == ModelNames.BiLSTM.value:
+            model = RadarBiLSTM()
+        model_file_name = [file_name for file_name in os.listdir(models_directory) if
+                           file_name.startswith(model_name + "_model") and file_name.endswith(
+                               "val_-1.tar")][0]
+        model_path = os.path.join(models_directory, model_file_name)
+        state_dict = torch.load(model_path, map_location=torch.device('cpu'))
+        model.load_state_dict(state_dict)
+        if torch.cuda.is_available():
+            model = model.cuda()
+        val_loader = PrepareTrainData().get_idea_test_dataloader()
+        y_real = None
+        y_preds = None
+        for index, batch in enumerate(val_loader):
+            X_batch, y_batch = batch[0], batch[1]
+
+            if torch.cuda.is_available():
+                X_batch = X_batch.cuda()
+                y_batch = y_batch.cuda()
+
+            with torch.inference_mode():  # 关闭 gradient
+                preds_batch = model(X_batch)
+
+            preds_batch = torch.round(preds_batch)
+
+            if y_real is None:
+                y_real = y_batch
+                y_preds = preds_batch
+            else:
+                y_real = torch.cat((y_real, y_batch), dim=0)
+                y_preds = torch.cat((y_preds, preds_batch), dim=0)
+        y_real = y_real.numpy()
+        y_preds = y_preds.numpy()
+        y_real = y_real.reshape(1, len(y_real)).squeeze()
+        y_preds = y_preds.reshape(1, len(y_preds)).squeeze()
+
+        MSE = mean_squared_error(y_real, y_preds)
+        RMSE = np.sqrt(MSE)
+        # MAE = round(np.mean(np.abs(y_preds - y_real)), 2)
+        MAE = mean_absolute_error(y_real, y_preds)
+        R2 = r2_score(y_real, y_preds)
+        print(f"MSE = {MSE}, RMSE = {RMSE}, MAE = {MAE}, R2= {R2}")
+
+        # return y_preds, y_real
+
+    @staticmethod
+    def get_model_preds(model_name, participant, type="c"):
         model = None
         base_directory = os.path.dirname(__file__)
         models_directory = os.path.join(base_directory, model_name, "trained_models")
@@ -185,7 +266,9 @@ class EvaModel:
         elif model_name == ModelNames.CnnLSTM.value:
             model = CnnLSTM()
 
-        model_file_name = [file_name for file_name in os.listdir(models_directory) if file_name.startswith(model_name + "_model") and file_name.endswith("val_" + str(participant) + ".tar")][0]
+        model_file_name = [file_name for file_name in os.listdir(models_directory) if
+                           file_name.startswith(model_name + "_model") and file_name.endswith(
+                               "val_" + str(participant if type == 'c' else (participant + 1)) + ".tar")][0]
 
         model_path = os.path.join(models_directory, model_file_name)
         state_dict = torch.load(model_path, map_location=torch.device('cpu'))
@@ -243,44 +326,44 @@ class EvaModel:
             elif method.lower() == "r2":
                 ax.plot(participant_ids, R2s, label=model_name, linewidth=1, marker=marker)
             elif method.lower() == "all":
-                ax[0,0].plot(participant_ids, MSEs, label=model_name, linewidth=0.8, marker=marker)
-                ax[0,1].plot(participant_ids, RMSEs, label=model_name, linewidth=0.8, marker=marker)
-                ax[1,0].plot(participant_ids, MAEs, label=model_name, linewidth=0.8, marker=marker)
-                ax[1,1].plot(participant_ids, R2s, label=model_name, linewidth=0.8, marker=marker)
+                ax[0, 0].plot(participant_ids, MSEs, label=model_name, linewidth=0.8, marker=marker)
+                ax[0, 1].plot(participant_ids, RMSEs, label=model_name, linewidth=0.8, marker=marker)
+                ax[1, 0].plot(participant_ids, MAEs, label=model_name, linewidth=0.8, marker=marker)
+                ax[1, 1].plot(participant_ids, R2s, label=model_name, linewidth=0.8, marker=marker)
 
             print(f"{model_name} done...")
 
         if method.lower() == "all":
             me_name = "MSE"
-            ax[0,0].set_xlabel("Participants' IDs")
-            ax[0,0].set_ylabel(me_name + " Values")
-            ax[0,0].set_title(me_name + " Metrics for Each Participant.")
+            ax[0, 0].set_xlabel("Participants' IDs")
+            ax[0, 0].set_ylabel(me_name + " Values")
+            ax[0, 0].set_title(me_name + " Metrics for Each Participant.")
             # ax[0,0].tick_params(axis='x', rotation=45)
-            ax[0,0].legend(loc='upper right')
+            ax[0, 0].legend(loc='upper right')
             ax[0, 0].set_xticks(participant_ids)
 
             me_name = "RMSE"
-            ax[0,1].set_xlabel("Participants' IDs")
-            ax[0,1].set_ylabel(me_name + " Values")
-            ax[0,1].set_title(me_name + " Metrics for Each Participant.")
+            ax[0, 1].set_xlabel("Participants' IDs")
+            ax[0, 1].set_ylabel(me_name + " Values")
+            ax[0, 1].set_title(me_name + " Metrics for Each Participant.")
             # ax[0,1].tick_params(axis='x', rotation=45)
-            ax[0,1].legend(loc='upper right')
+            ax[0, 1].legend(loc='upper right')
             ax[0, 1].set_xticks(participant_ids)
 
             me_name = "MAE"
-            ax[1,0].set_xlabel("Participants' IDs")
-            ax[1,0].set_ylabel(me_name + " Values")
-            ax[1,0].set_title(me_name + " Metrics for Each Participant.")
+            ax[1, 0].set_xlabel("Participants' IDs")
+            ax[1, 0].set_ylabel(me_name + " Values")
+            ax[1, 0].set_title(me_name + " Metrics for Each Participant.")
             # ax[1, 0].tick_params(axis='x', rotation=45)
-            ax[1,0].legend(loc='upper right')
+            ax[1, 0].legend(loc='upper right')
             ax[1, 0].set_xticks(participant_ids)
 
             me_name = "$R^{2}$"
-            ax[1,1].set_xlabel("Participants' IDs")
-            ax[1,1].set_ylabel(r"" + me_name + " Values")
-            ax[1,1].set_title(r"" + me_name + " Metrics for Each Participant.")
+            ax[1, 1].set_xlabel("Participants' IDs")
+            ax[1, 1].set_ylabel(r"" + me_name + " Values")
+            ax[1, 1].set_title(r"" + me_name + " Metrics for Each Participant.")
             # ax[1,1].tick_params(axis='x', rotation=45)
-            ax[1,1].legend(loc='lower right')
+            ax[1, 1].legend(loc='lower right')
             ax[1, 1].set_xticks(participant_ids)
 
         else:
@@ -383,7 +466,7 @@ class EvaModel:
                     v_loss_values = v_y_values if v_loss_values.size == 0 else v_loss_values + v_y_values
 
             if type == "t" or type == "v":
-                ax.plot(epoches, loss_values/len(participant_ids), label=model_name, linewidth=1)
+                ax.plot(epoches, loss_values / len(participant_ids), label=model_name, linewidth=1)
             elif type == "a":
                 # ax1 = plt.subplot(121)
                 ax[0].plot(epoches, t_loss_values / len(participant_ids), label=model_name, linewidth=1)
@@ -458,4 +541,7 @@ class EvaModel:
 # print("")
 # print(MSE_str + "\n" + RMSE_str + "\n" + MAE_str + "\n" + R2_str)
 
-EvaModel.plot_average_metric_for_each_model()
+# EvaModel.plot_average_metric_for_each_model()
+
+model_name = ModelNames.BiLSTM.value
+EvaModel.plot_model_preds_for_participant_on_traval(model_name, 12)
