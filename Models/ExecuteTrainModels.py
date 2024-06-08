@@ -34,18 +34,20 @@ class ExecuteTrainModels:
 
         self.formatted_time = datetime.now().strftime("%m%d%H%M")
 
-    def initialize_dataloader(self, participant_id, is_shuffle=False):
+    def initialize_dataloader(self, participant_id=-1, is_shuffle=False):
         ptd = PrepareTrainData(is_shuffle=is_shuffle)
-        return ptd.get_cross_dataloaders(participant_id)
+        if participant_id == -1:
+            return ptd.get_idea_dataloaders()
+        else:
+            return ptd.get_cross_dataloaders(participant_id)
 
     def initialize_model(self):
         if torch.cuda.is_available():
             self.model = self.model.cuda()
             self.loss_fun = self.loss_fun.cuda()
         optimizer = optim.ASGD(self.model.parameters(), lr=self.lr)
-        if self.model_name == ModelNames.DILATE.value:
-            optimizer = optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=0.95)
-
+        if self.model_name == ModelNames.NBEATS.value:
+            optimizer = optim.Adadelta(self.model.parameters(), lr=self.lr, weight_decay=0.98)
 
         return optimizer
 
@@ -57,7 +59,10 @@ class ExecuteTrainModels:
         best_t_loss = float('inf')
 
         current_dir = os.path.dirname(__file__)
-        save_path = os.path.join(current_dir, self.model_name, "trained_models")
+        if self.participant_id == -1:
+            save_path = os.path.join(current_dir, self.model_name, "trained_models", "idea_noise")
+        else:
+            save_path = os.path.join(current_dir, self.model_name, "trained_models")
         if not os.path.exists(save_path):
             os.makedirs(save_path)
 

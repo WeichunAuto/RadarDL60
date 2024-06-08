@@ -5,19 +5,23 @@ import torch
 import pandas as pd
 
 from Models.BiLSTM.RadarBiLSTM import RadarBiLSTM
-from Models.DILATE.NetGRU import NetGRU
+from Models.RNNED.NetGRU import NetGRU
 from Models.GRU.RadarGRU import RadarGRU
 from Models.ModelNames import ModelNames, PlotMarker
 from Models.NBEATS.NBeats import NBeats
 from Models.PrepareTrainData import PrepareTrainData
 from Models.LSTM.RadarLSTM import RadarLSTM
-from Models.CnnLSTM.CnnLSTM import CnnLSTM
+from Models.CNNLSTM.CnnLSTM import CnnLSTM
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
 from Models.TPALSTM.RadarTpaLSTM import RadarTpaLSTM
+import matplotlib.patches as patches
+import matplotlib.patches as mpatches
+
+
 
 
 class EvaModel:
@@ -30,74 +34,67 @@ class EvaModel:
         mae_mean_array = []
         r2_mean_array = []
 
-        size = len(model_name_all)
-        MSE_mean_str = ""
-        RMSE_mean_str = ""
-        MAE_mean_str = ""
-        R2_mean_str = ""
+        DILATE_MSEs, DILATE_MAEs, DILATE_RMSEs, DILATE_R2s = EvaModel.preds_all_mases(ModelNames.DILATE.value)
+        CnnLSTM_MSEs, CnnLSTM_MAEs, CnnLSTM_RMSEs, CnnLSTM_R2s = EvaModel.preds_all_mases(ModelNames.CnnLSTM.value)
+        LSTM_MSEs, LSTM_MAEs, LSTM_RMSEs, LSTM_R2s = EvaModel.preds_all_mases(ModelNames.LSTM.value)
+        BiLSTM_MSEs, BiLSTM_MAEs, BiLSTM_RMSEs, BiLSTM_R2s = EvaModel.preds_all_mases(ModelNames.BiLSTM.value)
+        GRU_MSEs, GRU_MAEs, GRU_RMSEs, GRU_R2s = EvaModel.preds_all_mases(ModelNames.GRU.value)
+        TPALSTM_MSEs, TPALSTM_MAEs, TPALSTM_RMSEs, TPALSTM_R2s = EvaModel.preds_all_mases(ModelNames.TPALSTM.value)
 
-        for i in range(size):
-            model_name = model_name_all[i].value
-            MSEs, MAEs, RMSEs, R2s = EvaModel.preds_all_mases(model_name)
+        NBEATS_MSEs, NBEATS_MAEs, NBEATS_RMSEs, NBEATS_R2s = EvaModel.preds_all_mases(ModelNames.NBEATS.value)
 
-            MSE_mean = sum(MSEs) / len(MSEs)
-            RMSE_mean = sum(RMSEs) / len(RMSEs)
-            MAE_mean = sum(MAEs) / len(MAEs)
-            R2_mean = sum(R2s) / len(R2s)
+        mse_datasets = [LSTM_MSEs, BiLSTM_MSEs, GRU_MSEs, TPALSTM_MSEs, CnnLSTM_MSEs, DILATE_MSEs, NBEATS_MSEs]
+        rmse_datasets = [LSTM_RMSEs, BiLSTM_RMSEs, GRU_RMSEs, TPALSTM_RMSEs, CnnLSTM_RMSEs, DILATE_RMSEs, NBEATS_RMSEs]
+        mae_datasets = [LSTM_MAEs, BiLSTM_MAEs, GRU_MAEs, TPALSTM_MAEs, CnnLSTM_MAEs, DILATE_MAEs, NBEATS_MAEs]
+        r2_datasets = [LSTM_R2s, BiLSTM_R2s, GRU_R2s, TPALSTM_R2s, CnnLSTM_R2s, DILATE_R2s, NBEATS_R2s]
+        labels = [model_name.value for model_name in model_name_all]
 
-            MSE_mean_str = MSE_mean_str + " & " + str(round(MSE_mean, 4))
-            RMSE_mean_str = RMSE_mean_str + " & " + str(round(RMSE_mean, 4))
-            MAE_mean_str = MAE_mean_str + " & " + str(round(MAE_mean, 4))
-            R2_mean_str = R2_mean_str + " & " + str(round(R2_mean, 4))
+        # print(f"\nMSE_mean_str = {MSE_mean_str}")
+        # print(f"RMSE_mean_str = {RMSE_mean_str}")
+        # print(f"MAE_mean_str = {MAE_mean_str}")
+        # print(f"R2_mean_str = {R2_mean_str}")
 
-            mse_mean_array.append(MSE_mean)
-            rmse_mean_array.append(RMSE_mean)
-            mae_mean_array.append(MAE_mean)
-            r2_mean_array.append(R2_mean)
-
-        print(f"\nMSE_mean_str = {MSE_mean_str}")
-        print(f"RMSE_mean_str = {RMSE_mean_str}")
-        print(f"MAE_mean_str = {MAE_mean_str}")
-        print(f"R2_mean_str = {R2_mean_str}")
-
-        fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(16, 8), sharex=False)
+        fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(16, 6), sharex=False)
         fig.subplots_adjust(wspace=0.2, hspace=0.4)
-        x = np.arange(-0.2, size - 1)
-        total_width, n = 1.4, 2
-        width = total_width / n
 
-        ax[0, 0].bar(x, mse_mean_array, width=width, label="MSE Mean", color='orange')  #
-        ax[0, 1].bar(x, rmse_mean_array, width=width, label="RMSE Mean", color='green')
-        ax[1, 0].bar(x, mae_mean_array, width=width, label="MAE Mean", color='blue')
-        ax[1, 1].bar(x, r2_mean_array, width=width, label=r"$R^2$ Mean", color='purple')
+        median_line = mpatches.Patch(color='black', label='Median')
+        mean_point = plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='blue', markersize=10, label='Mean')
+        min_line = plt.Line2D([0], [1], color='grey', linestyle='-', linewidth=1, label='Min/Max')
+        box_patch = mpatches.Patch(facecolor='grey', edgecolor='black', label='IQR')
+        box_patch = mpatches.Patch(facecolor='grey', edgecolor='black', label='IQR')
 
-        xticks = [model_name_all[i].value for i in range(size)]
-        xline = [i for i in np.arange(size)]
+        metric_name = "MSE"
+        ax[0, 0].boxplot(mse_datasets, labels=labels, patch_artist=True, meanline=True)
+        # ax[0, 0].legend()
+        # ax[0, 0].legend(handles=[median_line, mean_point, min_line, box_patch], loc='upper right')
 
-        ax[0, 0].set_xlabel("Model Name")
-        ax[0, 0].set_ylabel("MSE Average Values")
-        ax[0, 0].set_title("MSE Average Values for All Participants.")
-        # ax[0,0].tick_params(axis='x', rotation=45)
-        ax[0, 0].legend(loc='lower right')
-        ax[0, 0].set_xticks(xline, xticks)
+        ax[0, 0].set_title("Box Plot of " + metric_name)
+        ax[0, 0].set_xlabel('Model Names')
+        ax[0, 0].set_ylabel(metric_name + ' Values')
 
-        ax[0, 1].set_xlabel("Model Names")
-        ax[0, 1].set_ylabel("RMSE Average Values")
-        ax[0, 1].set_title("RMSE Average Values for All Participants.")
-        ax[0, 1].legend(loc='lower right')
-        ax[0, 1].set_xticks(xline, xticks)
+        metric_name = "RMSE"
+        ax[0, 1].boxplot(rmse_datasets, labels=labels, patch_artist=True, meanline=True)
+        # ax[0, 1].legend()
+        # ax[0, 1].legend(handles=[median_line, mean_point, min_line, box_patch], loc='upper right')
+        ax[0, 1].set_title("Box Plot of " + metric_name)
+        ax[0, 1].set_xlabel('Model Names')
+        ax[0, 1].set_ylabel(metric_name + ' Values')
 
-        ax[1, 0].set_xlabel("Model Names")
-        ax[1, 0].set_ylabel("MAE Average Values")
-        ax[1, 0].set_title("MAE Average Values for All Participants.")
-        ax[1, 0].legend(loc='lower right')
-        ax[1, 0].set_xticks(xline, xticks)
+        metric_name = "MAE"
+        ax[1, 0].boxplot(mae_datasets, labels=labels, patch_artist=True, meanline=True)
+        # ax[1, 0].legend()
+        # ax[1, 0].legend(handles=[median_line, mean_point, min_line, box_patch], loc='upper right')
+        ax[1, 0].set_title("Box Plot of " + metric_name)
+        ax[1, 0].set_xlabel('Model Names')
+        ax[1, 0].set_ylabel(metric_name + ' Values')
 
-        ax[1, 1].set_xlabel("Model Names")
-        ax[1, 1].set_ylabel(r"$R^2$ Average Values")
-        ax[1, 1].set_title(r"$R^2$ Average Values for All Participants.")
-        ax[1, 1].legend(loc='upper right')
-        ax[1, 1].set_xticks(xline, xticks)
+        metric_name = "$R^2$"
+        ax[1, 1].boxplot(r2_datasets, labels=labels, patch_artist=True, meanline=True)
+        # ax[1, 1].legend()
+        # ax[1, 1].legend(handles=[median_line, mean_point, min_line, box_patch], loc='upper right')
+        ax[1, 1].set_title("Box Plot of " + metric_name)
+        ax[1, 1].set_xlabel('Model Names')
+        ax[1, 1].set_ylabel(metric_name + ' Values')
 
         plt.show()
 
@@ -163,31 +160,27 @@ class EvaModel:
         # plt.savefig(model_path + '.png')
         plt.show()
 
+
     @staticmethod
-    def plot_model_preds_for_participant_on_traval(model_name, participant):
-        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 4), sharey=True)
-        fig.subplots_adjust(wspace=0.2, hspace=0.4)
+    def plot_model_preds_for_participant_on_traval(model_name):
+        fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(16, 6), sharey=False)
+        fig.subplots_adjust(wspace=0.2, hspace=0.45)
 
-        y_preds, y_real = EvaModel.get_model_preds(model_name, participant, type='t')
-        plot_period = 200
-        y_preds = y_preds[0:plot_period]
-        y_real = y_real[0:plot_period]
-        ax[0].plot(y_real, color='green', label='HR Reference Wave')
-        ax[0].plot(y_preds, color='orange', label='HR Prediction Wave', alpha=0.8)
-        ax[0].set_xlabel("Seconds")
-        ax[0].set_ylabel("HR Values")
-        ax[0].set_title("Prediction Results Using Participant 12 \nas the Training Dataset")
-        ax[0].legend(loc='upper right')
+        participant_ids = [((0, 0), 12), ((0, 1), 14), ((1, 0), 20), ((1, 1), 25)]
 
-        y_preds, y_real = EvaModel.get_model_preds(model_name, participant)
-        y_preds = y_preds[0:plot_period]
-        y_real = y_real[0:plot_period]
-        ax[1].plot(y_real, color='green', label='HR Reference Wave')
-        ax[1].plot(y_preds, color='orange', label='HR Prediction Wave', alpha=0.8)
-        ax[1].set_xlabel("Seconds")
-        ax[1].set_ylabel("HR Values")
-        ax[1].set_title("Prediction Results Using Participant 12 \nas the Validation Dataset")
-        ax[1].legend(loc='upper right')
+        for idx ,participant in participant_ids:
+
+            y_preds, y_real = EvaModel.get_model_preds(model_name, participant)
+            plot_period = 200
+            y_preds = y_preds[0:plot_period]
+            y_real = y_real[0:plot_period]
+
+            ax[idx[0], idx[1]].plot(y_real, color='green', label='HR Reference')
+            ax[idx[0], idx[1]].plot(y_preds, color='#D27300', label='HR Prediction', alpha=0.8)
+            ax[idx[0], idx[1]].set_xlabel("Time (Seconds)")
+            ax[idx[0], idx[1]].set_ylabel("HR Values")
+            ax[idx[0], idx[1]].set_title("Participant " + str(participant))
+            ax[idx[0], idx[1]].legend(loc='upper right')
 
         plt.show()
 
@@ -267,7 +260,7 @@ class EvaModel:
             model = CnnLSTM()
 
         model_file_name = [file_name for file_name in os.listdir(models_directory) if
-                           file_name.startswith(model_name + "_model") and file_name.endswith(
+                           file_name.lower().startswith(model_name.lower() + "_model") and file_name.endswith(
                                "val_" + str(participant if type == 'c' else (participant + 1)) + ".tar")][0]
 
         model_path = os.path.join(models_directory, model_file_name)
@@ -541,7 +534,9 @@ class EvaModel:
 # print("")
 # print(MSE_str + "\n" + RMSE_str + "\n" + MAE_str + "\n" + R2_str)
 
-# EvaModel.plot_average_metric_for_each_model()
+EvaModel.plot_average_metric_for_each_model()
 
-model_name = ModelNames.BiLSTM.value
-EvaModel.plot_model_preds_for_participant_on_traval(model_name, 12)
+# EvaModel.plot_mase_of_all_models('all')
+
+# model_name = ModelNames.BiLSTM.value
+# EvaModel.plot_model_preds_for_participant_on_traval(model_name)

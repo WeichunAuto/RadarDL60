@@ -5,12 +5,11 @@ class ModelNames(Enum):
 
     LSTM = "LSTM"
     BiLSTM = "BiLSTM"
-    TPALSTM = "TPALSTM"
     GRU = "GRU"
-    DILATE = "DILATE"
+    CnnLSTM = "CNNLSTM"
+    DILATE = "RNNED"
+    TPALSTM = "TPALSTM"
     NBEATS = "NBEATS"
-    # HARHN = "HARHN"
-    CnnLSTM = "CnnLSTM"
 
 
 class PlotMarker(Enum):
@@ -18,9 +17,9 @@ class PlotMarker(Enum):
     LSTM = "s"
     BiLSTM = "*"
     GRU = "h"
-    DILATE = "d"
+    RNNED = "d"
+    CNNLSTM = "8"
     NBEATS = "p"
-    CnnLSTM = "8"
 
 # all_v = list(PlotMarker)
 # s = ModelNames.NBEATS.value

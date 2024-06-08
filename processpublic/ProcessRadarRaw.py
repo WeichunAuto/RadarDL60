@@ -166,8 +166,42 @@ def _pca_to_csv(file_name, save_dir):
     df.to_csv(saved_file_path)
 
 
+def plot_ecg_radar_raw_signal(participant):
+    fs = 2000
+    window_size = 5
+
+    radar_phase = np.array(__get_radar_phase(participant))
+    normalized_radar_phase = (radar_phase - np.min(radar_phase)) / (np.max(radar_phase) - np.min(radar_phase))
+    ecg_phase = __get_ecg_phase(participant)
+
+    x_seconds = len(ecg_phase) / fs
+
+    x_times = np.array([i for i in np.arange(0, x_seconds, x_seconds / len(ecg_phase))])
+    ecg_phase = ecg_phase.squeeze()
+    x_start = 20 * fs
+    x_end = 30 * fs
+
+    x_value = x_times[x_start:x_end]
+    x_value = x_value - x_times[x_start]
+    y_value_ECG = ecg_phase[x_start:x_end]
+    y_value_Radar = normalized_radar_phase[x_start:x_end]
+
+    plt.plot(x_value, y_value_ECG, color='#E09302', linewidth=0.9, label='ECG Signal')
+    plt.plot(x_value, y_value_Radar, color='blue', linewidth=0.9, label='Radar Raw Signal')
+    plt.xlabel("Time (Seconds)")
+    # plt.ylabel("Amplitude")
+    plt.yticks([])
+    plt.xticks([i for i in range(11)])
+    # plt.grid()
+    plt.legend()
+    # plt.savefig(model_path + '.png')
+    plt.show()
+
+plot_ecg_radar_raw_signal(1)
+
+
 # plot_radar_raw_signal(3)
 # for i in range(4, 31):
 #     process_radar_raw(i)
 #     print(f'{i} done...')
-prepare_train_val_data()
+# prepare_train_val_data()
