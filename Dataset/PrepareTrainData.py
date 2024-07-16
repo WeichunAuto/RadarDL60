@@ -33,7 +33,7 @@ class PrepareTrainData:
 
         df_dataset = None
         sub_folder = "train/" if is_train is True else "val/"
-        dataset_directory = parent_dir + "/publicdata/dataset/" + sub_folder
+        dataset_directory = parent_dir + "/publicdata/Dataset/" + sub_folder
         file_names = [file_name for file_name in os.listdir(dataset_directory) if file_name.startswith("raw_")]
 
         for i, file_name in enumerate(file_names):
@@ -58,7 +58,7 @@ class PrepareTrainData:
         # parent_dir = str(Path.cwd().parent)
         current_dir = os.path.dirname(os.path.abspath(__file__))
         parent_dir = os.path.dirname(current_dir)
-        dataset_directory = parent_dir + "/publicdata/dataset/cross_train/"
+        dataset_directory = parent_dir + "/publicdata/Dataset/cross_train/"
         file_name = "raw_" + str(participant) + "_Resting.csv"
         file_path = os.path.join(dataset_directory, file_name)
         df = pd.read_csv(file_path)
@@ -72,7 +72,7 @@ class PrepareTrainData:
 
     def get_test_data(self, participant):
         parent_dir = str(Path.cwd().parent)
-        dataset_directory = parent_dir + "/publicdata/dataset/test/"
+        dataset_directory = parent_dir + "/publicdata/Dataset/test/"
         file_name = "raw_" + str(participant) + "_Resting.csv"
         file_path = os.path.join(dataset_directory, file_name)
         df = pd.read_csv(file_path)
@@ -105,52 +105,6 @@ class PrepareTrainData:
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
         return dataloader
 
-    def get_idea_test_dataloader(self):
-        parent_dir = str(Path.cwd().parent)
-        test_dataset_directory = parent_dir + "/publicdata/dataset/cross_train/idea_noise/test"
-        test_dataloader = self._extract_idea_dataloads(test_dataset_directory)
-        return test_dataloader
-
-    def get_idea_dataloaders(self):
-        '''
-        Prepare dataloader for idea noise.
-        :return:
-        '''
-        parent_dir = str(Path.cwd().parent)
-        train_dataset_directory = parent_dir + "/publicdata/dataset/cross_train/idea_noise/train"
-        test_dataset_directory = parent_dir + "/publicdata/dataset/cross_train/idea_noise/test"
-        train_dataloader = self._extract_idea_dataloads(train_dataset_directory)
-        test_dataloader = self._extract_idea_dataloads(test_dataset_directory)
-        return train_dataloader, test_dataloader
-
-    def _extract_idea_dataloads(self, train_dataset_directory):
-        df_dataset = None
-        
-        # prepare train dataloader
-        file_names = [file_name for file_name in os.listdir(train_dataset_directory) if
-                            file_name.startswith("idea_noise_")]
-        file_names = sorted(file_names, key=lambda x: int(re.findall(r'\d+', x)[0]))
-        for i, file_name in enumerate(file_names):
-            file_path = os.path.join(train_dataset_directory, file_name)
-            # print(f'training file_name-{i} = {file_path}')
-            df = pd.read_csv(file_path)
-            df_dataset = pd.concat([df_dataset, df], ignore_index=True)
-
-            if i > 1:
-                break
-        last_column = "f_590"
-        df_idea_X = df_dataset.loc[:, "f_1":last_column]
-        Idea_X_data = df_idea_X.to_numpy()
-        Idea_y_data = df_dataset["hr"].to_numpy()
-        # print(f'Idea_X_data shape = {Idea_X_data.shape}, Idea_y_data shape = {Idea_y_data.shape}')
-        idea_X = Idea_X_data.reshape(len(Idea_X_data), self.seq_length, self.n_features)
-        idea_y = Idea_y_data.reshape(len(Idea_y_data), 1)
-        idea_X = torch.tensor(idea_X).float()
-        idea_y = torch.tensor(idea_y).float()
-        idea_dataset = RadarDataset(idea_X, idea_y)
-        idea_dataloader = DataLoader(idea_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
-        return idea_dataloader
-
     def get_cross_dataloaders(self, participant_id):
         '''
         Prepare dataloader for cross validation.
@@ -158,7 +112,7 @@ class PrepareTrainData:
         :return:
         '''
         parent_dir = str(Path.cwd().parent)
-        dataset_directory = parent_dir + "/publicdata/dataset/cross_train/"
+        dataset_directory = parent_dir + "/publicdata/Dataset/cross_train/"
         val_file_name = "raw_" + str(participant_id) + "_Resting.csv"
         df_dataset = None
 
@@ -202,29 +156,6 @@ class PrepareTrainData:
         val_dataloader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
 
         return train_dataloader, val_dataloader
-
-    def process_data_for_idea_noise(self):
-        parent_dir = str(Path.cwd().parent)
-        dataset_directory = parent_dir + "/publicdata/dataset/cross_train/"
-        saved_train_directory = os.path.join(dataset_directory, "idea_noise", "train")
-        saved_test_directory = os.path.join(dataset_directory, "idea_noise", "test")
-        saved_prefix = "idea_noise_"
-        test_seconds = 10
-        participant_ids = [i for i in range(1, 31) if i != 3]
-
-        for participant_id in participant_ids:
-            file_name = "raw_" + str(participant_id) + "_Resting.csv"
-            file_path = os.path.join(dataset_directory, file_name)
-            df = pd.read_csv(file_path)
-            df_train = df[0: (df.shape[0] - test_seconds)]
-            df_test = df[(df.shape[0] - test_seconds): df.shape[0]]
-
-            saved_train_file_path = os.path.join(saved_train_directory, saved_prefix + str(participant_id) + "_Resting.csv")
-            saved_test_file_path = os.path.join(saved_test_directory,
-                                                 saved_prefix + str(participant_id) + "_Resting.csv")
-
-            df_train.to_csv(saved_train_file_path, index=False)
-            df_test.to_csv(saved_test_file_path, index=False)
 
 
 # PrepareTrainData().process_data_for_idea_noise()
