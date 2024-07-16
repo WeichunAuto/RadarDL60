@@ -8,6 +8,7 @@ import re
 import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
+from datetime import datetime, timedelta
 
 root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -37,18 +38,21 @@ def __get_radar_phase(participant):
     mat_data = __get_mat_data(participant)
     radar_i = None
     radar_q = None
+    measure_time = None
     # Access variables in the loaded data
     name_i = 'radar_i'
     name_q = "radar_q"
+    measurement_info = "measurement_info"
     if name_i in mat_data and name_q in mat_data:
         radar_i = mat_data[name_i]
         radar_q = mat_data[name_q]
+        measure_time = mat_data[measurement_info][0][0][0]
     radar_i = radar_i.squeeze()
     radar_q = radar_q.squeeze()
     radar_complex = radar_i + 1j * radar_q
     radar_phase = radar_complex
 
-    return radar_phase
+    return radar_phase, measure_time
 
 
 def __get_ecg_phase(participant):
@@ -76,7 +80,7 @@ def process_radar_raw(participant):
     fs = 2000
     window_size = 5
 
-    radar_phase = __get_radar_phase(participant)
+    radar_phase, measure_time = __get_radar_phase(participant)
     ecg_phase = __get_ecg_phase(participant)
 
     x_seconds = len(radar_phase) / fs
@@ -107,9 +111,78 @@ def process_radar_raw(participant):
 
     df.to_csv(saved_file_path)
 
+def process_radar_raw_with_date(participant):
+    '''
+    generate date for the Dataset
+    :param participant:
+    :return:
+    '''
+    fs = 2000
+    window_size = 5
+
+    radar_phase, measure_time = __get_radar_phase(participant)
+    ecg_phase = __get_ecg_phase(participant)
+
+    x_seconds = len(radar_phase) / fs
+    X_pd_columns = ["fs_" + str(i) for i in range(1, fs + 1)]
+    X_pd_columns.insert(0, "date")
+    X_pd_columns.insert(0, "id")
+    y_pd_columns = ["id", "hr"]
+
+    X_pd_values = []
+    y_pd_values = []
+
+    dt = datetime.strptime(measure_time, '%Y-%m-%d_%H-%M-%S')
+
+    for i in range(int(x_seconds) - window_size + 1):
+        X_ecg_phase = ecg_phase[i * fs: (fs * window_size + i * fs)]
+        ecg_result = ecg.ecg(signal=X_ecg_phase, sampling_rate=fs, show=False)  # show=True, plot the img.
+
+        heart_rate = ecg_result['heart_rate']
+        y_hr = round(np.mean(heart_rate))
+
+        X_radar_phase = radar_phase[i * fs: (fs * window_size + i * fs)]
+        real_part = X_radar_phase.real
+        imag_part = X_radar_phase.imag
+        row_data = np.column_stack((real_part, imag_part))
+
+        # Initialize PCA with 1 component
+        pca = PCA(n_components=1)
+        # Fit and transform the data
+        reduced_row_data = pca.fit_transform(row_data)
+        reduced_row_data = reduced_row_data.squeeze()
+
+        reduced_row_data = reduced_row_data.reshape(window_size, fs)
+
+        # X_assembled_data = []
+        # y_assembled_data = []
+        for index, row in enumerate(reduced_row_data):
+            # Add one second
+            dt += timedelta(seconds=1)
+            # Convert the datetime object back into a string
+            latest_datetime = dt.strftime('%Y-%m-%d %H:%M:%S')
+
+            new_row = [i] + [latest_datetime] + row.tolist()
+            X_pd_values.append(new_row)
+
+        y_pd_values.append([i] + [y_hr])
+
+    saved_directory = os.path.join("../publicdata/dataset", "cross_train_date")
+    if not os.path.exists(saved_directory):
+        os.makedirs(saved_directory)
+
+    X_saved_file_path = os.path.join(saved_directory, "X_raw_" + str(participant) + "_Resting.csv")
+    y_saved_file_path = os.path.join(saved_directory, "y_raw_" + str(participant) + "_Resting.csv")
+
+    X_df = pd.DataFrame(X_pd_values, columns=X_pd_columns)
+    y_df = pd.DataFrame(y_pd_values, columns=y_pd_columns)
+
+    X_df.to_csv(X_saved_file_path)
+    y_df.to_csv(y_saved_file_path)
+
 def prepare_train_val_data():
     parent_dir = str(Path.cwd().parent)
-    dataset_directory = parent_dir + "/publicdata/dataset/"
+    dataset_directory = parent_dir + "/publicdata/Dataset/"
     raw_dir = dataset_directory + "raw/window_size_5/"
     train_dir = dataset_directory + "train"
     val_dir = dataset_directory + "val"
@@ -140,7 +213,7 @@ def prepare_train_val_data():
 
 def _pca_to_csv(file_name, save_dir):
     parent_dir = str(Path.cwd().parent)
-    dataset_directory = parent_dir + "/publicdata/dataset/"
+    dataset_directory = parent_dir + "/publicdata/Dataset/"
     raw_dir = dataset_directory + "raw/window_size_5/"
 
     df_dataset = pd.read_csv(raw_dir + file_name)
@@ -197,11 +270,12 @@ def plot_ecg_radar_raw_signal(participant):
     # plt.savefig(model_path + '.png')
     plt.show()
 
-plot_ecg_radar_raw_signal(1)
+# plot_ecg_radar_raw_signal(2)
+# process_radar_raw_with_date(2)
 
 
-# plot_radar_raw_signal(3)
-# for i in range(4, 31):
-#     process_radar_raw(i)
-#     print(f'{i} done...')
+for i in range(4, 31):
+    process_radar_raw_with_date(i)
+    print(f'{i} done...')
+
 # prepare_train_val_data()
