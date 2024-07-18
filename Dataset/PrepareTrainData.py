@@ -7,26 +7,42 @@ from torch.utils.data import Dataset, DataLoader
 
 from pathlib import Path
 import re
+from datetime import datetime, timedelta
+
+from processpublic.ProcessRadarRaw import get_measure_time
+from utils.timefeatures import time_features
 
 
 class RadarDataset(Dataset):
-    def __init__(self, X, y):
+    def __init__(self, X, y, date_stamp=None):
         self.X = X
         self.y = y
+        self.date_stamp = date_stamp
 
     def __len__(self):
         return len(self.X)
 
     def __getitem__(self, index):
-        return self.X[index], self.y[index]
+        if self.date_stamp is None:
+            return self.X[index], self.y[index]
+        else:
+            X_mask = self.date_stamp[index]
+            y_mask = self.date_stamp[index][len(self.date_stamp[index])-1]
+            y_mask = y_mask.view(1, len(y_mask))
+
+            X_seq = self.X[index]
+            y_seq = self.y[index]
+            y_seq = y_seq.view(len(y_seq), 1)
+            return X_seq, y_seq, X_mask, y_mask
 
 
 class PrepareTrainData:
-    def __init__(self, seq_length=5, n_features=118, batch_size=16, is_shuffle=False):
+    def __init__(self, is_date=False, seq_length=5, n_features=118, batch_size=16, is_shuffle=False):
         self.seq_length = seq_length
         self.n_features = n_features
         self.batch_size = batch_size
         self.is_shuffle = is_shuffle
+        self.is_date = is_date
 
     def get_trainval_data(self, is_train=True):
         parent_dir = str(Path.cwd().parent.parent)
@@ -157,5 +173,181 @@ class PrepareTrainData:
 
         return train_dataloader, val_dataloader
 
+    def get_cross_dataloaders_add_date(self, participant_id):
+        '''
+                Prepare dataloader for cross validation using manually add date into data (118 features).
+                :param participant_id:
+                :return:
+        '''
+        parent_dir = str(Path.cwd().parent)
+        dataset_directory = parent_dir + "/publicdata/Dataset/cross_train/"
+        val_file_name = "raw_" + str(participant_id) + "_Resting.csv"
 
-# PrepareTrainData().process_data_for_idea_noise()
+        train_X = []
+        train_y = []
+
+        val_data_stamp = []
+
+        last_column = "f_590"
+
+        # prepare train dataloader
+        file_names = [file_name for file_name in os.listdir(dataset_directory) if
+                      file_name.startswith("raw_") and file_name != val_file_name]
+        file_names = sorted(file_names, key=lambda x: int(re.findall(r'\d+', x)[0]))
+        for i, file_name in enumerate(file_names):
+            pt_pattern = r'\d+'
+            pt_id = re.search(pt_pattern, file_name).group()
+            measure_time = get_measure_time(pt_id)
+            dt = datetime.strptime(measure_time, '%Y-%m-%d_%H-%M-%S')
+
+            file_path = os.path.join(dataset_directory, file_name)
+            # print(f'training file_name-{i} = {file_path}')
+            df = pd.read_csv(file_path)
+            X_data_all = df.loc[:, "f_1":last_column].to_numpy()
+            y_data_all = df["hr"].to_numpy()
+            for idx in range(X_data_all.shape[0]):
+                X_data = X_data_all[idx].reshape(self.seq_length, self.n_features)
+                train_X.append(X_data)
+                train_y.append([y_data_all[idx]])
+
+                # X_date  = []
+                for j in range(self.seq_length):
+                    dt += timedelta(seconds=1)
+                    # Convert the datetime object back into a string
+                    latest_datetime = dt.strftime('%Y-%m-%d %H:%M:%S')
+                    val_data_stamp.append(latest_datetime)
+
+            if i > 1:
+                break
+
+        train_date_stamp = self._refactor_date_stamp(val_data_stamp)
+
+        train_X = torch.tensor(train_X).float()
+        train_y = torch.tensor(train_y).float()
+        train_date_stamp = torch.tensor(train_date_stamp).float()
+        train_dataset = RadarDataset(train_X, train_y, date_stamp=train_date_stamp)
+        train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
+
+        # prepare validation train dataloader
+        val_X = []
+        val_y = []
+        val_data_stamp = []
+
+        measure_time_val = get_measure_time(participant_id)
+        dt_val = datetime.strptime(measure_time_val, '%Y-%m-%d_%H-%M-%S')
+
+        df_val = pd.read_csv(os.path.join(dataset_directory, val_file_name))
+        X_data_val_all = df_val.loc[:, "f_1":last_column].to_numpy()
+        y_data_val_all = df_val["hr"].to_numpy()
+        for idx in range(X_data_val_all.shape[0]):
+            X_data_val = X_data_val_all[idx].reshape(self.seq_length, self.n_features)
+            val_X.append(X_data_val)
+            val_y.append([y_data_val_all[idx]])
+
+            # X_date  = []
+            for j in range(self.seq_length):
+                dt_val += timedelta(seconds=1)
+                # Convert the datetime object back into a string
+                latest_datetime = dt_val.strftime('%Y-%m-%d %H:%M:%S')
+                val_data_stamp.append(latest_datetime)
+
+        val_date_stamp = self._refactor_date_stamp(val_data_stamp)
+
+        val_X = torch.tensor(val_X).float()
+        val_y = torch.tensor(val_y).float()
+        val_date_stamp = torch.tensor(val_date_stamp).float()
+
+        val_dataset = RadarDataset(val_X, val_y, date_stamp=val_date_stamp)
+        val_dataloader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
+
+        return train_dataloader, val_dataloader
+
+    def _refactor_date_stamp(self, data_stamp):
+        train_date_stamp = []
+        data_stamp = time_features(pd.to_datetime(data_stamp), freq='s')
+        data_stamp = data_stamp.transpose(1, 0)
+        for i in range(int(len(data_stamp) / self.seq_length)):
+            train_date_stamp.append(data_stamp[i * self.seq_length: self.seq_length * (i + 1)])
+        return train_date_stamp
+
+    def get_cross_with_date_dataloaders(self, participant_id):
+        '''
+            Prepare dataloader for cross validation using the raw data with date (2000 features).
+            :param participant_id:
+            :return:
+        '''
+        train_X = []
+        train_y = []
+        val_X = []
+        val_y = []
+
+        parent_dir = str(Path.cwd().parent)
+        dataset_directory = parent_dir + "/publicdata/dataset/cross_train_date/"
+        val_file_name_X = "X_raw_" + str(participant_id) + "_Resting.csv"
+        val_file_name_y = "y_raw_" + str(participant_id) + "_Resting.csv"
+        df_dataset = None
+
+        # prepare train dataloader
+        file_names_X = [file_name for file_name in os.listdir(dataset_directory) if
+                      file_name.startswith("X_raw_") and file_name != val_file_name_X]
+        file_names_y = [file_name for file_name in os.listdir(dataset_directory) if
+                        file_name.startswith("y_raw_") and file_name != val_file_name_y]
+        file_names_X = sorted(file_names_X, key=lambda x: int(re.findall(r'\d+', x)[0]))
+        file_names_y = sorted(file_names_y, key=lambda x: int(re.findall(r'\d+', x)[0]))
+
+        for i, (file_X, file_y) in enumerate(zip(file_names_X, file_names_y)):
+            if i>1:
+                break
+            file_path_X = os.path.join(dataset_directory, file_X)
+            file_path_y = os.path.join(dataset_directory, file_y)
+            # print(f'training file_name-{i} = {file_path}')
+            df_X = pd.read_csv(file_path_X)
+            df_y = pd.read_csv(file_path_y)
+            for id in range(df_y.shape[0]):
+                filter_X = (df_X["id"] == id)
+                filter_y = (df_y["id"] == id)
+                if self.is_date is False:
+                    X_data = df_X.loc[filter_X, "fs_1":"fs_2000"].to_numpy().tolist()
+                else:
+                    X_data = df_X.loc[filter_X, "date":"fs_2000"].to_numpy().tolist()
+                y_data = df_y.loc[filter_y, "hr"].to_numpy().tolist()
+                train_X.append(X_data)
+                train_y.append(y_data)
+
+            print(f'loaded training file_name-{i} = {file_X}')
+
+        train_X = torch.tensor(train_X).float()
+        train_y = torch.tensor(train_y).float()
+        if self.is_date is True:
+            train_y = train_y.reshape(train_y.size(0), 1, 1)
+        train_dataset = RadarDataset(train_X, train_y)
+        train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
+
+        # prepare validation train dataloader
+        df_val_X = pd.read_csv(os.path.join(dataset_directory, val_file_name_X))
+        df_val_y = pd.read_csv(os.path.join(dataset_directory, val_file_name_y))
+
+        for id in range(df_val_y.shape[0]):
+            filter_val_X = (df_val_X["id"] == id)
+            filter_val_y = (df_val_y["id"] == id)
+
+            if self.is_date is False:
+                X_val_data = df_val_X.loc[filter_val_X, "fs_1":"fs_2000"].to_numpy().tolist()
+            else:
+                X_val_data = df_val_X.loc[filter_val_X, "date":"fs_2000"].to_numpy().tolist()
+            y_val_data = df_val_y.loc[filter_val_y, "hr"].to_numpy().tolist()
+            val_X.append(X_val_data)
+            val_y.append(y_val_data)
+
+        val_X = torch.tensor(val_X).float()
+        val_y = torch.tensor(val_y).float()
+        if self.is_date is True:
+            val_y = val_y.reshape(val_y.size(0), 1, 1)
+        val_dataset = RadarDataset(val_X, val_y)
+        val_dataloader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
+
+        return train_dataloader, val_dataloader
+
+
+# PrepareTrainData().get_cross_with_date_dataloaders(1)
+# PrepareTrainData().get_cross_dataloaders_add_date(1)

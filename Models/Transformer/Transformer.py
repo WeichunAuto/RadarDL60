@@ -1,69 +1,93 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from Models.Transformer.layers.Transformer_EncDec import Decoder, DecoderLayer, Encoder, EncoderLayer, ConvLayer
+from Models.Transformer.layers.SelfAttention_Family import FullAttention, AttentionLayer
+from Models.Transformer.layers.Embed import DataEmbedding
 import numpy as np
-
-class PositionalEncoding(nn.Module):
-
-    def __init__(self, d_model, max_len=5000):
-        super(PositionalEncoding, self).__init__()
-
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        # div_term = torch.exp(
-        #     torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)
-        # )
-        div_term = 1 / (10000 ** ((2 * np.arange(d_model)) / d_model))
-        pe[:, 0::2] = torch.sin(position * div_term[0::2])
-        pe[:, 1::2] = torch.cos(position * div_term[1::2])
-
-        pe = pe.unsqueeze(0).transpose(0, 1)  # [5000, 1, d_model],so need seq-len <= 5000
-        # pe.requires_grad = False
-        self.register_buffer('pe', pe)
-
-    def forward(self, x):
-        # print(self.pe[:x.size(0), :].repeat(1,x.shape[1],1).shape ,'---',x.shape)
-        # dimension 1 maybe inequal batchsize
-        return x + self.pe[:x.size(0), :].repeat(1, x.shape[1], 1)
 
 
 class Transformer(nn.Module):
-    def __init__(self, feature_size=1080, num_layers=1, dropout=0.1):
+
+    def __init__(self, pred_len=1, enc_in=118, dropout=0.05):
         super(Transformer, self).__init__()
 
         self.lr = 0.001
         self.loss_fun = nn.MSELoss()
 
-        self.model_type = 'Transformer'
-        self.input_embedding = nn.Linear(590, feature_size)
-        self.src_mask = None
+        self.pred_len = pred_len
+        self.output_attention = False
+        self.d_model = 512
+        self.embed = 'timeF'
+        self.freq = 's'
+        self.enc_in = enc_in
+        self.dec_in = 1
+        self.dropout = dropout
+        self.factor = 3
+        self.n_heads = 8
+        self.d_ff = 2048
+        self.activation = 'gelu'
+        self.e_layers = 2
+        self.d_layers = 1
+        self.c_out = 118
+        self.features = 'MS'   # M : multivariate predict multivariate, S : univariate predict univariate, MS : multivariate predict univariate
 
-        self.pos_encoder = PositionalEncoding(feature_size)
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=10, dropout=dropout)
-        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)
-        self.decoder = nn.Linear(feature_size, 1)
-        self.init_weights()
 
-    def init_weights(self):
-        initrange = 0.1
-        self.decoder.bias.data.zero_()
-        self.decoder.weight.data.uniform_(-initrange, initrange)
+        # Embedding
+        self.enc_embedding = DataEmbedding(self.enc_in, self.d_model, self.embed, self.freq,
+                                           self.dropout)
+        self.dec_embedding = DataEmbedding(self.dec_in, self.d_model, self.embed, self.freq,
+                                           self.dropout)
+        # Encoder
+        self.encoder = Encoder(
+            [
+                EncoderLayer(
+                    AttentionLayer(
+                        FullAttention(False, self.factor, attention_dropout=self.dropout,
+                                      output_attention=self.output_attention), self.d_model, self.n_heads),
+                    self.d_model,
+                    self.d_ff,
+                    dropout=self.dropout,
+                    activation=self.activation
+                ) for l in range(self.e_layers)
+            ],
+            norm_layer=torch.nn.LayerNorm(self.d_model)
+        )
+        # Decoder
+        self.decoder = Decoder(
+            [
+                DecoderLayer(
+                    AttentionLayer(
+                        FullAttention(True, self.factor, attention_dropout=self.dropout, output_attention=False),
+                        self.d_model, self.n_heads),
+                    AttentionLayer(
+                        FullAttention(False, self.factor, attention_dropout=self.dropout, output_attention=False),
+                        self.d_model, self.n_heads),
+                    self.d_model,
+                    self.d_ff,
+                    dropout=self.dropout,
+                    activation=self.activation,
+                )
+                for l in range(self.d_layers)
+            ],
+            norm_layer=torch.nn.LayerNorm(self.d_model),
+            projection=nn.Linear(self.d_model, self.c_out, bias=True)
+        )
 
-    def forward(self, src):
-        # src with shape (input_window, batch_len, 1)
-        src = src.view(1, src.size(0), 590)
-        if self.src_mask is None or self.src_mask.size(0) != len(src):
-            device = src.device
-            mask = self._generate_square_subsequent_mask(len(src)).to(device)
-            self.src_mask = mask
+    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
+                enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
 
-        src = self.input_embedding(src)  # linear transformation before positional embedding
-        src = self.pos_encoder(src)
-        output = self.transformer_encoder(src, self.src_mask)  # , self.src_mask)
-        output = self.decoder(output)
-        output = output.squeeze(0)
-        return output
+        enc_out = self.enc_embedding(x_enc, x_mark_enc)
+        enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)
 
-    def _generate_square_subsequent_mask(self, sz):
-        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-        return mask
+        dec_out = self.dec_embedding(x_dec, x_mark_dec)
+        dec_out = self.decoder(dec_out, enc_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)
+
+        if self.output_attention:
+            return dec_out[:, -self.pred_len:, :], attns
+        else:
+            outputs = dec_out[:, -self.pred_len:, :]  # [B, L, D]
+
+            f_dim = -1 if self.features == 'MS' else 0
+            outputs = outputs[:, -self.pred_len:, f_dim:]
+            return outputs

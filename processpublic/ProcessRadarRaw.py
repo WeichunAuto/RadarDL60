@@ -33,6 +33,16 @@ def plot_radar_raw_signal(participant):
     plt.legend()
     plt.show()
 
+def get_measure_time(participant):
+    '''
+    get the start time of measurement for the participant.
+    :param participant:
+    :return:
+    '''
+    mat_data = __get_mat_data(participant)
+    measurement_info = "measurement_info"
+    measure_time = mat_data[measurement_info][0][0][0]
+    return measure_time
 
 def __get_radar_phase(participant):
     mat_data = __get_mat_data(participant)
@@ -69,7 +79,7 @@ def __get_ecg_phase(participant):
 
 
 def __get_mat_data(participant):
-    folder = "GDN000" if participant < 10 else "GDN00"
+    folder = "GDN000" if int(participant) < 10 else "GDN00"
     mat_file_path = os.path.join(root_path, "publicdata/" + folder + str(participant) + "/" + folder + str(
         participant) + "_1_Resting.mat")
     mat_data = scipy.io.loadmat(mat_file_path)
@@ -274,8 +284,8 @@ def plot_ecg_radar_raw_signal(participant):
 # process_radar_raw_with_date(2)
 
 
-for i in range(4, 31):
-    process_radar_raw_with_date(i)
-    print(f'{i} done...')
+# for i in range(4, 31):
+#     process_radar_raw_with_date(i)
+#     print(f'{i} done...')
 
 # prepare_train_val_data()

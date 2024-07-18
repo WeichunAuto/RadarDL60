@@ -10,7 +10,6 @@ class RadarLSTM(nn.Module):
         self.lr = 0.001
         self.loss_fun = nn.MSELoss()
 
-
         self.n_features = n_features
         self.n_hidden = n_hidden
         self.n_layers = n_layers

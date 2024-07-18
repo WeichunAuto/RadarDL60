@@ -7,7 +7,7 @@ from tqdm import tqdm
 import sys
 
 sys.path.append('/home/syt0722/Weichun/60pts')
-from Models.PrepareTrainData import PrepareTrainData
+from Dataset.PrepareTrainData import PrepareTrainData
 from Models.ModelNames import ModelNames
 
 import matplotlib.pyplot as plt
@@ -35,11 +35,14 @@ class ExecuteTrainModels:
         self.formatted_time = datetime.now().strftime("%m%d%H%M")
 
     def initialize_dataloader(self, participant_id=-1, is_shuffle=False):
-        ptd = PrepareTrainData(is_shuffle=is_shuffle)
-        if participant_id == -1:
-            return ptd.get_idea_dataloaders()
+
+        if self.model_name == ModelNames.Transformer.value:
+            ptd = PrepareTrainData(is_date=True, is_shuffle=is_shuffle)
+            return ptd.get_cross_dataloaders_add_date(participant_id)
         else:
+            ptd = PrepareTrainData(is_shuffle=is_shuffle)
             return ptd.get_cross_dataloaders(participant_id)
+        # return ptd.get_cross_with_date_dataloaders(participant_id)
 
     def initialize_model(self):
         if torch.cuda.is_available():
@@ -100,14 +103,30 @@ class ExecuteTrainModels:
     def train_per_epoch(self):
         self.model.train()
         loss_batch_sum = 0.
+
         for index, batch in enumerate(self.train_loader):
-            X_batch, y_batch = batch[0], batch[1]
+            # if index == 113:
+            #     a = 2;
+            if self.model_name == ModelNames.Transformer.value:
+                X_batch, y_batch, X_batch_mask, y_batch_mask = batch[0], batch[1], batch[2], batch[3]
+                if torch.cuda.is_available():
+                    X_batch = X_batch.cuda()
+                    y_batch = y_batch.cuda()
+                    X_batch_mask = X_batch_mask.cuda()
+                    y_batch_mask = y_batch_mask.cuda()
 
-            if torch.cuda.is_available():
-                X_batch = X_batch.cuda()
-                y_batch = y_batch.cuda()
+                # decoder input
+                dec_inp = torch.zeros_like(y_batch[:, -1:, :]).float()
+                dec_inp = torch.cat([y_batch[:, :0, :], dec_inp], dim=1).float()
 
-            preds_batch = self.model(X_batch)  # 2. 预测
+                preds_batch = self.model(X_batch, X_batch_mask, dec_inp, y_batch_mask, y_batch)
+            else:
+                X_batch, y_batch = batch[0], batch[1]
+                if torch.cuda.is_available():
+                    X_batch = X_batch.cuda()
+                    y_batch = y_batch.cuda()
+                preds_batch = self.model(X_batch)  # 2. 预测
+
             loss = self.loss_fun(preds_batch, y_batch)  # 3. 计算 loss
             self.optimizer.zero_grad()  # 4. 每一次 loop, 都重置 gradient
             loss.backward()  # 5. 反向传播，计算并更新 gradient 为 True 的参数值
@@ -121,17 +140,32 @@ class ExecuteTrainModels:
         self.model.eval()
         loss_batch_sum = 0.
         for index, batch in enumerate(self.val_loader):
-            X_batch, y_batch = batch[0], batch[1]
+            if self.model_name == ModelNames.Transformer.value:
+                X_batch, y_batch, X_batch_mask, y_batch_mask = batch[0], batch[1], batch[2], batch[3]
+                if torch.cuda.is_available():
+                    X_batch = X_batch.cuda()
+                    y_batch = y_batch.cuda()
+                    X_batch_mask = X_batch_mask.cuda()
+                    y_batch_mask = y_batch_mask.cuda()
 
-            if torch.cuda.is_available():
-                X_batch = X_batch.cuda()
-                y_batch = y_batch.cuda()
+                # decoder input
+                dec_inp = torch.zeros_like(y_batch[:, -1:, :]).float()
+                dec_inp = torch.cat([y_batch[:, :0, :], dec_inp], dim=1).float()
 
-            with torch.inference_mode():  # 关闭 gradient tracking
-                preds_batch = self.model(X_batch)  # 2. 预测
+                preds_batch = self.model(X_batch, X_batch_mask, dec_inp, y_batch_mask, y_batch)
 
-                loss = self.loss_fun(preds_batch, y_batch)  # 3. 计算 loss
-                loss_batch_sum += loss.item()
+            else:
+                X_batch, y_batch = batch[0], batch[1]
+
+                if torch.cuda.is_available():
+                    X_batch = X_batch.cuda()
+                    y_batch = y_batch.cuda()
+
+                with torch.inference_mode():  # 关闭 gradient tracking
+                    preds_batch = self.model(X_batch)  # 2. 预测
+
+            loss = self.loss_fun(preds_batch, y_batch)  # 3. 计算 loss
+            loss_batch_sum += loss.item()
 
         return loss_batch_sum
 
@@ -145,6 +179,10 @@ class ExecuteTrainModels:
         plt.savefig('loss_plot' + self.formatted_time + '.png')
         plt.show()
 
+    def __find_batch_mark(self, X_batch, y_batch):
+        X_batch_mark = X_batch[:, :, 0:2]
+        y_batch_mark = X_batch[:, 0:1, 0:1]
+        return X_batch_mark, y_batch_mark
 
 # et = ExecuteTrainLSTM()
 # t_loss, v_loss, _ = et.start_training()

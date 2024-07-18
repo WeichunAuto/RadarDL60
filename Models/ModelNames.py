@@ -10,6 +10,8 @@ class ModelNames(Enum):
     DILATE = "RNNED"
     TPALSTM = "TPALSTM"
     NBEATS = "NBEATS"
+    # Informer = "Informer"
+    Transformer = "Transformer"
 
 
 class PlotMarker(Enum):

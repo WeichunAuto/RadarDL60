@@ -5,6 +5,9 @@ import numpy as np
 import pandas as pd
 
 import sys
+
+
+
 sys.path.append('/home/syt0722/Weichun/60pts')
 from Models.ExecuteTrainModels import ExecuteTrainModels
 from Models.ModelNames import ModelNames
@@ -14,7 +17,8 @@ from Models.GRU.RadarGRU import RadarGRU
 from Models.TPALSTM.RadarTpaLSTM import RadarTpaLSTM
 from Models.NBEATS.NBeats import NBeats
 from Models.RNNED.NetGRU import NetGRU
-
+from Models.Informer.model import Informer
+from Models.Transformer.Transformer import Transformer
 
 def get_model(model_name):
     model = None
@@ -30,6 +34,10 @@ def get_model(model_name):
         model = RadarTpaLSTM()
     elif model_name == ModelNames.NBEATS.value:
         model = NBeats()
+    # elif model_name == ModelNames.Trans.value:
+    #     model = Informer(118, 118, 118, 5, 1, 1)
+    elif model_name == ModelNames.Transformer.value:
+        model = Transformer()
 
     return model
 
@@ -64,7 +72,7 @@ def start_training(model_name, epochs, participant=-1):
     df.to_csv(saved_file_path)
 
 
-epochs = 2
+epochs = 50
 
 # model_name = ModelNames.GRU.value
 # start_training(model_name, epochs)
@@ -78,7 +86,7 @@ epochs = 2
 # model_name = ModelNames.TSFM.value
 # start_training(model_name, epochs)
 
-model_name = ModelNames.NBEATS.value
+model_name = ModelNames.Transformer.value
 start_training(model_name, epochs)
 
 # model_name = ModelNames.RNNED.value
