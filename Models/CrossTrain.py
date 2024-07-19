@@ -17,7 +17,7 @@ from Models.GRU.RadarGRU import RadarGRU
 from Models.TPALSTM.RadarTpaLSTM import RadarTpaLSTM
 from Models.NBEATS.NBeats import NBeats
 from Models.RNNED.NetGRU import NetGRU
-# from Models.Informer.model import Informer
+from Models.Informer.Informer import Informer
 from Models.Transformer.Transformer import Transformer
 
 def get_model(model_name):
@@ -38,6 +38,8 @@ def get_model(model_name):
     #     model = Informer(118, 118, 118, 5, 1, 1)
     elif model_name == ModelNames.Transformer.value:
         model = Transformer()
+    elif model_name == ModelNames.Informer.value:
+        model = Informer()
 
     return model
 
@@ -86,7 +88,7 @@ epochs = 50
 # model_name = ModelNames.TSFM.value
 # start_training(model_name, epochs)
 
-model_name = ModelNames.Transformer.value
+model_name = ModelNames.Informer.value
 start_training(model_name, epochs)
 
 # model_name = ModelNames.RNNED.value

@@ -10,7 +10,7 @@ class ModelNames(Enum):
     DILATE = "RNNED"
     TPALSTM = "TPALSTM"
     NBEATS = "NBEATS"
-    # Informer = "Informer"
+    Informer = "Informer"
     Transformer = "Transformer"
 
 

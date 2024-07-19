@@ -22,6 +22,7 @@ if torch.cuda.is_available():
 
 class ExecuteTrainModels:
     def __init__(self, model, model_name, participant_id, is_shuffle=False, epochs=500):
+        self.transformer_base = False
         self.participant_id = participant_id
         self.epochs = epochs
         self.model = model
@@ -36,9 +37,13 @@ class ExecuteTrainModels:
 
     def initialize_dataloader(self, participant_id=-1, is_shuffle=False):
 
-        if self.model_name == ModelNames.Transformer.value:
+        if self.model_name == ModelNames.Transformer.value or self.model_name == ModelNames.Informer.value:
+            self.transformer_base = True
+
+        if self.transformer_base is True:
             ptd = PrepareTrainData(is_date=True, is_shuffle=is_shuffle)
             return ptd.get_cross_dataloaders_add_date(participant_id)
+
         else:
             ptd = PrepareTrainData(is_shuffle=is_shuffle)
             return ptd.get_cross_dataloaders(participant_id)
@@ -107,7 +112,7 @@ class ExecuteTrainModels:
         for index, batch in enumerate(self.train_loader):
             # if index == 113:
             #     a = 2;
-            if self.model_name == ModelNames.Transformer.value:
+            if self.transformer_base is True:
                 X_batch, y_batch, X_batch_mask, y_batch_mask = batch[0], batch[1], batch[2], batch[3]
                 if torch.cuda.is_available():
                     X_batch = X_batch.cuda()
@@ -144,7 +149,7 @@ class ExecuteTrainModels:
         self.model.eval()
         loss_batch_sum = 0.
         for index, batch in enumerate(self.val_loader):
-            if self.model_name == ModelNames.Transformer.value:
+            if self.transformer_base is True:
                 X_batch, y_batch, X_batch_mask, y_batch_mask = batch[0], batch[1], batch[2], batch[3]
                 if torch.cuda.is_available():
                     X_batch = X_batch.cuda()
@@ -154,10 +159,13 @@ class ExecuteTrainModels:
 
                 # decoder input
                 dec_inp = torch.zeros_like(y_batch[:, -1:, :]).float()
-                dec_inp = torch.cat([y_batch[:, :0, :], dec_inp], dim=1).float()
+                dec_inp = torch.cat([y_batch[:, :self.model.label_len, :], dec_inp], dim=1).float()
 
                 preds_batch = self.model(X_batch, X_batch_mask, dec_inp, y_batch_mask, y_batch)
 
+                f_dim = -1 if self.model.features == 'MS' else 0
+                preds_batch = preds_batch[:, -self.model.pred_len:, f_dim:]
+                y_batch = y_batch[:, -self.model.pred_len:, f_dim:]
             else:
                 X_batch, y_batch = batch[0], batch[1]
 
