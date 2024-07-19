@@ -1,10 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from Models.Transformer.layers.Transformer_EncDec import Decoder, DecoderLayer, Encoder, EncoderLayer, ConvLayer
-from Models.Transformer.layers.SelfAttention_Family import FullAttention, AttentionLayer
-from Models.Transformer.layers.Embed import DataEmbedding
-import numpy as np
+from Models.layers.Transformer_EncDec import Decoder, DecoderLayer, Encoder, EncoderLayer
+from Models.layers.SelfAttention_Family import FullAttention, AttentionLayer
+from Models.layers.Embed import DataEmbedding
 
 
 class Transformer(nn.Module):
@@ -15,6 +13,7 @@ class Transformer(nn.Module):
         self.lr = 0.001
         self.loss_fun = nn.MSELoss()
 
+        self.label_len = 1
         self.pred_len = pred_len
         self.output_attention = False
         self.d_model = 512
@@ -87,7 +86,4 @@ class Transformer(nn.Module):
             return dec_out[:, -self.pred_len:, :], attns
         else:
             outputs = dec_out[:, -self.pred_len:, :]  # [B, L, D]
-
-            f_dim = -1 if self.features == 'MS' else 0
-            outputs = outputs[:, -self.pred_len:, f_dim:]
             return outputs

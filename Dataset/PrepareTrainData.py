@@ -14,25 +14,26 @@ from utils.timefeatures import time_features
 
 
 class RadarDataset(Dataset):
-    def __init__(self, X, y, date_stamp=None):
+    def __init__(self, X, y, X_date_stamp=None, y_date_stamp=None):
         self.X = X
         self.y = y
-        self.date_stamp = date_stamp
+        self.X_date_stamp = X_date_stamp
+        self.y_date_stamp = y_date_stamp
 
     def __len__(self):
         return len(self.X)
 
     def __getitem__(self, index):
-        if self.date_stamp is None:
+        if self.X_date_stamp is None:
             return self.X[index], self.y[index]
         else:
-            X_mask = self.date_stamp[index]
-            y_mask = self.date_stamp[index][len(self.date_stamp[index])-1]
-            y_mask = y_mask.view(1, len(y_mask))
+            X_mask = self.X_date_stamp[index]
+            y_mask = self.y_date_stamp[index][(len(self.y_date_stamp[index])-2):]
+            # y_mask = y_mask.view(1, len(y_mask))
 
             X_seq = self.X[index]
             y_seq = self.y[index]
-            y_seq = y_seq.view(len(y_seq), 1)
+            y_seq = torch.cat((y_seq, y_seq)).view(2,1)
             return X_seq, y_seq, X_mask, y_mask
 
 
@@ -180,13 +181,14 @@ class PrepareTrainData:
                 :return:
         '''
         parent_dir = str(Path.cwd().parent)
-        dataset_directory = parent_dir + "/publicdata/Dataset/cross_train/"
+        dataset_directory = parent_dir + "/publicdata/dataset/cross_train/"
         val_file_name = "raw_" + str(participant_id) + "_Resting.csv"
 
         train_X = []
         train_y = []
 
-        val_data_stamp = []
+        X_date_stamp = []
+        y_date_stamp = []
 
         last_column = "f_590"
 
@@ -215,23 +217,32 @@ class PrepareTrainData:
                     dt += timedelta(seconds=1)
                     # Convert the datetime object back into a string
                     latest_datetime = dt.strftime('%Y-%m-%d %H:%M:%S')
-                    val_data_stamp.append(latest_datetime)
+                    X_date_stamp.append(latest_datetime)
+
+                    dt_day = dt
+                    dt_day += timedelta(days=1)
+                    latest_datetime_d = dt_day.strftime('%Y-%m-%d %H:%M:%S')
+                    y_date_stamp.append(latest_datetime_d)
+
 
             if i > 1:
                 break
 
-        train_date_stamp = self._refactor_date_stamp(val_data_stamp)
+        train_X_date_stamp = self._refactor_date_stamp(X_date_stamp)
+        train_y_date_stamp = self._refactor_date_stamp(y_date_stamp)
 
         train_X = torch.tensor(train_X).float()
         train_y = torch.tensor(train_y).float()
-        train_date_stamp = torch.tensor(train_date_stamp).float()
-        train_dataset = RadarDataset(train_X, train_y, date_stamp=train_date_stamp)
+        train_X_date_stamp = torch.tensor(train_X_date_stamp).float()
+        train_y_date_stamp = torch.tensor(train_y_date_stamp).float()
+        train_dataset = RadarDataset(train_X, train_y, X_date_stamp=train_X_date_stamp, y_date_stamp=train_y_date_stamp)
         train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
 
         # prepare validation train dataloader
         val_X = []
         val_y = []
-        val_data_stamp = []
+        X_date_stamp = []
+        y_date_stamp = []
 
         measure_time_val = get_measure_time(participant_id)
         dt_val = datetime.strptime(measure_time_val, '%Y-%m-%d_%H-%M-%S')
@@ -249,15 +260,23 @@ class PrepareTrainData:
                 dt_val += timedelta(seconds=1)
                 # Convert the datetime object back into a string
                 latest_datetime = dt_val.strftime('%Y-%m-%d %H:%M:%S')
-                val_data_stamp.append(latest_datetime)
+                X_date_stamp.append(latest_datetime)
 
-        val_date_stamp = self._refactor_date_stamp(val_data_stamp)
+                dt_val_d = dt_val
+                dt_val_d += timedelta(days=1)
+                # Convert the datetime object back into a string
+                latest_datetime_d = dt_val_d.strftime('%Y-%m-%d %H:%M:%S')
+                y_date_stamp.append(latest_datetime_d)
+
+        val_X_date_stamp = self._refactor_date_stamp(X_date_stamp)
+        val_y_date_stamp = self._refactor_date_stamp(y_date_stamp)
 
         val_X = torch.tensor(val_X).float()
         val_y = torch.tensor(val_y).float()
-        val_date_stamp = torch.tensor(val_date_stamp).float()
+        val_X_date_stamp = torch.tensor(val_X_date_stamp).float()
+        val_y_date_stamp = torch.tensor(val_y_date_stamp).float()
 
-        val_dataset = RadarDataset(val_X, val_y, date_stamp=val_date_stamp)
+        val_dataset = RadarDataset(val_X, val_y, X_date_stamp=val_X_date_stamp, y_date_stamp=val_y_date_stamp)
         val_dataloader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=self.is_shuffle)
 
         return train_dataloader, val_dataloader

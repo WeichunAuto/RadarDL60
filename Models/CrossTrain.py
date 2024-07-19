@@ -17,7 +17,7 @@ from Models.GRU.RadarGRU import RadarGRU
 from Models.TPALSTM.RadarTpaLSTM import RadarTpaLSTM
 from Models.NBEATS.NBeats import NBeats
 from Models.RNNED.NetGRU import NetGRU
-from Models.Informer.model import Informer
+# from Models.Informer.model import Informer
 from Models.Transformer.Transformer import Transformer
 
 def get_model(model_name):

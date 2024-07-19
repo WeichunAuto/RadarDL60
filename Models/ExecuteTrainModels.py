@@ -117,9 +117,13 @@ class ExecuteTrainModels:
 
                 # decoder input
                 dec_inp = torch.zeros_like(y_batch[:, -1:, :]).float()
-                dec_inp = torch.cat([y_batch[:, :0, :], dec_inp], dim=1).float()
+                dec_inp = torch.cat([y_batch[:, :self.model.label_len, :], dec_inp], dim=1).float()
 
                 preds_batch = self.model(X_batch, X_batch_mask, dec_inp, y_batch_mask, y_batch)
+
+                f_dim = -1 if self.model.features == 'MS' else 0
+                preds_batch = preds_batch[:, -self.model.pred_len:, f_dim:]
+                y_batch = y_batch[:, -self.model.pred_len:, f_dim:]
             else:
                 X_batch, y_batch = batch[0], batch[1]
                 if torch.cuda.is_available():
