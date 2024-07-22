@@ -9,9 +9,11 @@ from Models.RNNED.NetGRU import NetGRU
 from Models.GRU.RadarGRU import RadarGRU
 from Models.ModelNames import ModelNames, PlotMarker
 from Models.NBEATS.NBeats import NBeats
-from dataset.PrepareTrainData import PrepareTrainData
+from Dataset.PrepareTrainData import PrepareTrainData
 from Models.LSTM.RadarLSTM import RadarLSTM
 from Models.CNNLSTM.CnnLSTM import CnnLSTM
+from Models.Transformer.Transformer import Transformer
+
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 import matplotlib.pyplot as plt
@@ -32,19 +34,19 @@ class EvaModel:
         mae_mean_array = []
         r2_mean_array = []
 
+        NBEATS_MSEs, NBEATS_MAEs, NBEATS_RMSEs, NBEATS_R2s = EvaModel.preds_all_mases(ModelNames.NBEATS.value)
         DILATE_MSEs, DILATE_MAEs, DILATE_RMSEs, DILATE_R2s = EvaModel.preds_all_mases(ModelNames.DILATE.value)
         CnnLSTM_MSEs, CnnLSTM_MAEs, CnnLSTM_RMSEs, CnnLSTM_R2s = EvaModel.preds_all_mases(ModelNames.CnnLSTM.value)
         LSTM_MSEs, LSTM_MAEs, LSTM_RMSEs, LSTM_R2s = EvaModel.preds_all_mases(ModelNames.LSTM.value)
         BiLSTM_MSEs, BiLSTM_MAEs, BiLSTM_RMSEs, BiLSTM_R2s = EvaModel.preds_all_mases(ModelNames.BiLSTM.value)
         GRU_MSEs, GRU_MAEs, GRU_RMSEs, GRU_R2s = EvaModel.preds_all_mases(ModelNames.GRU.value)
         TPALSTM_MSEs, TPALSTM_MAEs, TPALSTM_RMSEs, TPALSTM_R2s = EvaModel.preds_all_mases(ModelNames.TPALSTM.value)
+        Transformer_MSEs, Transformer_MAEs, Transformer_RMSEs, Transformer_R2s = EvaModel.preds_all_mases(ModelNames.Transformer.value)
 
-        NBEATS_MSEs, NBEATS_MAEs, NBEATS_RMSEs, NBEATS_R2s = EvaModel.preds_all_mases(ModelNames.NBEATS.value)
-
-        mse_datasets = [LSTM_MSEs, BiLSTM_MSEs, GRU_MSEs, TPALSTM_MSEs, CnnLSTM_MSEs, DILATE_MSEs, NBEATS_MSEs]
-        rmse_datasets = [LSTM_RMSEs, BiLSTM_RMSEs, GRU_RMSEs, TPALSTM_RMSEs, CnnLSTM_RMSEs, DILATE_RMSEs, NBEATS_RMSEs]
-        mae_datasets = [LSTM_MAEs, BiLSTM_MAEs, GRU_MAEs, TPALSTM_MAEs, CnnLSTM_MAEs, DILATE_MAEs, NBEATS_MAEs]
-        r2_datasets = [LSTM_R2s, BiLSTM_R2s, GRU_R2s, TPALSTM_R2s, CnnLSTM_R2s, DILATE_R2s, NBEATS_R2s]
+        mse_datasets = [LSTM_MSEs, BiLSTM_MSEs, GRU_MSEs, TPALSTM_MSEs, CnnLSTM_MSEs, DILATE_MSEs, NBEATS_MSEs, Transformer_MSEs]
+        rmse_datasets = [LSTM_RMSEs, BiLSTM_RMSEs, GRU_RMSEs, TPALSTM_RMSEs, CnnLSTM_RMSEs, DILATE_RMSEs, NBEATS_RMSEs, Transformer_RMSEs]
+        mae_datasets = [LSTM_MAEs, BiLSTM_MAEs, GRU_MAEs, TPALSTM_MAEs, CnnLSTM_MAEs, DILATE_MAEs, NBEATS_MAEs, Transformer_MAEs]
+        r2_datasets = [LSTM_R2s, BiLSTM_R2s, GRU_R2s, TPALSTM_R2s, CnnLSTM_R2s, DILATE_R2s, NBEATS_R2s, Transformer_R2s]
         labels = [model_name.value for model_name in model_name_all]
 
         # print(f"\nMSE_mean_str = {MSE_mean_str}")
@@ -63,33 +65,24 @@ class EvaModel:
 
         metric_name = "MSE"
         ax[0, 0].boxplot(mse_datasets, labels=labels, patch_artist=True, meanline=True)
-        # ax[0, 0].legend()
-        # ax[0, 0].legend(handles=[median_line, mean_point, min_line, box_patch], loc='upper right')
-
         ax[0, 0].set_title("Box Plot of " + metric_name)
         ax[0, 0].set_xlabel('Model Names')
         ax[0, 0].set_ylabel(metric_name + ' Values')
 
         metric_name = "RMSE"
         ax[0, 1].boxplot(rmse_datasets, labels=labels, patch_artist=True, meanline=True)
-        # ax[0, 1].legend()
-        # ax[0, 1].legend(handles=[median_line, mean_point, min_line, box_patch], loc='upper right')
         ax[0, 1].set_title("Box Plot of " + metric_name)
         ax[0, 1].set_xlabel('Model Names')
         ax[0, 1].set_ylabel(metric_name + ' Values')
 
         metric_name = "MAE"
         ax[1, 0].boxplot(mae_datasets, labels=labels, patch_artist=True, meanline=True)
-        # ax[1, 0].legend()
-        # ax[1, 0].legend(handles=[median_line, mean_point, min_line, box_patch], loc='upper right')
         ax[1, 0].set_title("Box Plot of " + metric_name)
         ax[1, 0].set_xlabel('Model Names')
         ax[1, 0].set_ylabel(metric_name + ' Values')
 
         metric_name = "$R^2$"
         ax[1, 1].boxplot(r2_datasets, labels=labels, patch_artist=True, meanline=True)
-        # ax[1, 1].legend()
-        # ax[1, 1].legend(handles=[median_line, mean_point, min_line, box_patch], loc='upper right')
         ax[1, 1].set_title("Box Plot of " + metric_name)
         ax[1, 1].set_xlabel('Model Names')
         ax[1, 1].set_ylabel(metric_name + ' Values')
@@ -182,64 +175,12 @@ class EvaModel:
 
         plt.show()
 
-
-    @staticmethod
-    def get_idea_model_preds(model_name):
-        model = None
-        base_directory = os.path.dirname(__file__)
-        models_directory = os.path.join(base_directory, model_name, "trained_models", "idea_noise")
-        if model_name == ModelNames.LSTM.value:
-            model = RadarLSTM()
-        elif model_name == ModelNames.BiLSTM.value:
-            model = RadarBiLSTM()
-        model_file_name = [file_name for file_name in os.listdir(models_directory) if
-                           file_name.startswith(model_name + "_model") and file_name.endswith(
-                               "val_-1.tar")][0]
-        model_path = os.path.join(models_directory, model_file_name)
-        state_dict = torch.load(model_path, map_location=torch.device('cpu'))
-        model.load_state_dict(state_dict)
-        if torch.cuda.is_available():
-            model = model.cuda()
-        val_loader = PrepareTrainData().get_idea_test_dataloader()
-        y_real = None
-        y_preds = None
-        for index, batch in enumerate(val_loader):
-            X_batch, y_batch = batch[0], batch[1]
-
-            if torch.cuda.is_available():
-                X_batch = X_batch.cuda()
-                y_batch = y_batch.cuda()
-
-            with torch.inference_mode():  # 关闭 gradient
-                preds_batch = model(X_batch)
-
-            preds_batch = torch.round(preds_batch)
-
-            if y_real is None:
-                y_real = y_batch
-                y_preds = preds_batch
-            else:
-                y_real = torch.cat((y_real, y_batch), dim=0)
-                y_preds = torch.cat((y_preds, preds_batch), dim=0)
-        y_real = y_real.numpy()
-        y_preds = y_preds.numpy()
-        y_real = y_real.reshape(1, len(y_real)).squeeze()
-        y_preds = y_preds.reshape(1, len(y_preds)).squeeze()
-
-        MSE = mean_squared_error(y_real, y_preds)
-        RMSE = np.sqrt(MSE)
-        # MAE = round(np.mean(np.abs(y_preds - y_real)), 2)
-        MAE = mean_absolute_error(y_real, y_preds)
-        R2 = r2_score(y_real, y_preds)
-        print(f"MSE = {MSE}, RMSE = {RMSE}, MAE = {MAE}, R2= {R2}")
-
-        # return y_preds, y_real
-
     @staticmethod
     def get_model_preds(model_name, participant, type="c"):
         model = None
-        base_directory = os.path.dirname(__file__)
-        models_directory = os.path.join(base_directory, model_name, "trained_models")
+        transformer_base = False
+        base_directory = os.path.dirname(os.path.dirname(__file__))
+        models_directory = os.path.join(base_directory, "Models", model_name, "trained_models")
         if model_name == ModelNames.LSTM.value:
             model = RadarLSTM()
         elif model_name == ModelNames.BiLSTM.value:
@@ -256,6 +197,8 @@ class EvaModel:
         #     model = HARHN()
         elif model_name == ModelNames.CnnLSTM.value:
             model = CnnLSTM()
+        elif model_name == ModelNames.Transformer.value:
+            model = Transformer()
 
         model_file_name = [file_name for file_name in os.listdir(models_directory) if
                            file_name.lower().startswith(model_name.lower() + "_model") and file_name.endswith(
@@ -266,20 +209,48 @@ class EvaModel:
         model.load_state_dict(state_dict)
         if torch.cuda.is_available():
             model = model.cuda()
-        val_loader = PrepareTrainData().val_dataloader(participant)
+
+        if model_name == ModelNames.Transformer.value:
+            transformer_base = True
+
+        if transformer_base is True:
+            ptd = PrepareTrainData(is_date=True)
+            _, val_loader = ptd.get_cross_dataloaders_add_date(participant)
+        else:
+            val_loader = PrepareTrainData().val_dataloader(participant)
+
         y_real = None
         y_preds = None
         for index, batch in enumerate(val_loader):
-            X_batch, y_batch = batch[0], batch[1]
+            if transformer_base is True:
+                X_batch, y_batch, X_batch_mask, y_batch_mask = batch[0], batch[1], batch[2], batch[3]
+                if torch.cuda.is_available():
+                    X_batch = X_batch.cuda()
+                    y_batch = y_batch.cuda()
+                    X_batch_mask = X_batch_mask.cuda()
+                    y_batch_mask = y_batch_mask.cuda()
 
-            if torch.cuda.is_available():
-                X_batch = X_batch.cuda()
-                y_batch = y_batch.cuda()
+                # decoder input
+                dec_inp = torch.zeros_like(y_batch[:, -1:, :]).float()
+                dec_inp = torch.cat([y_batch[:, :model.label_len, :], dec_inp], dim=1).float()
 
-            with torch.inference_mode():  # 关闭 gradient
-                preds_batch = model(X_batch)
+                preds_batch = model(X_batch, X_batch_mask, dec_inp, y_batch_mask, y_batch)
 
-            preds_batch = torch.round(preds_batch)
+                f_dim = -1 if model.features == 'MS' else 0
+                preds_batch = preds_batch[:, -model.pred_len:, f_dim:]
+                y_batch = y_batch[:, -model.pred_len:, f_dim:]
+
+            else:
+                X_batch, y_batch = batch[0], batch[1]
+
+                if torch.cuda.is_available():
+                    X_batch = X_batch.cuda()
+                    y_batch = y_batch.cuda()
+
+                with torch.inference_mode():  # 关闭 gradient
+                    preds_batch = model(X_batch)
+
+                preds_batch = torch.round(preds_batch)
 
             if y_real is None:
                 y_real = y_batch
@@ -288,7 +259,7 @@ class EvaModel:
                 y_real = torch.cat((y_real, y_batch), dim=0)
                 y_preds = torch.cat((y_preds, preds_batch), dim=0)
         y_real = y_real.numpy()
-        y_preds = y_preds.numpy()
+        y_preds = y_preds.detach().numpy()
         y_real = y_real.reshape(1, len(y_real)).squeeze()
         y_preds = y_preds.reshape(1, len(y_preds)).squeeze()
         return y_preds, y_real
@@ -371,7 +342,7 @@ class EvaModel:
     def plot_loss_of_all_models(type, participant):
         epoches = [i for i in range(500)]
         fig, ax = plt.subplots()
-        base_directory = os.path.dirname(__file__)
+        base_directory = os.path.dirname(os.path.dirname(__file__))
 
         column_plot = "t_loss" if type == "t" else "v_loss"
 
@@ -380,13 +351,13 @@ class EvaModel:
         for i in range(len(model_name_all)):
             model_name = model_name_all[i].value
 
-            models_directory = os.path.join(base_directory, model_name, "trained_models")
+            models_directory = os.path.join(base_directory, "Models", model_name, "trained_models")
             loss_file_name = "loss_" + model_name + ".csv"
             loss_file_path = os.path.join(models_directory, loss_file_name)
             df = pd.read_csv(loss_file_path)
             filtered_participant = (df["p_id"] == participant)
             y_values = df.loc[filtered_participant, [column_plot]].to_numpy()
-
+            y_values = y_values[:500]
             ax.plot(epoches, y_values, label=model_name, linewidth=.8)
 
         label_name = "Training loss" if type == "t" else "validation loss"
@@ -401,7 +372,7 @@ class EvaModel:
         epoches = [i for i in range(500)]
         participant_ids = [i for i in range(1, 31) if i != 3]
 
-        base_directory = os.path.dirname(__file__)
+        base_directory = os.path.dirname(os.path.dirname(__file__))
 
         if type == "t":
             column_plot = ["t_loss"]
@@ -423,7 +394,7 @@ class EvaModel:
             t_loss_values = np.array([])
             v_loss_values = np.array([])
 
-            models_directory = os.path.join(base_directory, model_name, "trained_models")
+            models_directory = os.path.join(base_directory, "Models", model_name, "trained_models")
             loss_file_name = "loss_" + model_name + ".csv"
             loss_file_path = os.path.join(models_directory, loss_file_name)
             df = pd.read_csv(loss_file_path)
@@ -494,7 +465,7 @@ class EvaModel:
 # model_path = "GRU/gru_best_t_model_20240401-16:37_0.03_.tar"
 
 # EvaModel.plot_mase_of_all_models("all")
-# EvaModel.plot_loss_of_all_models("v", 30)
+# EvaModel.plot_loss_of_all_models("t", 1)
 # EvaModel.plot_mean_loss_of_all_models("a")
 
 # model_name = ModelNames.LSTM.value
@@ -532,9 +503,11 @@ class EvaModel:
 # print("")
 # print(MSE_str + "\n" + RMSE_str + "\n" + MAE_str + "\n" + R2_str)
 
-EvaModel.plot_average_metric_for_each_model()
 
+EvaModel.plot_average_metric_for_each_model()
 # EvaModel.plot_mase_of_all_models('all')
+# EvaModel.plot_mean_loss_of_all_models("a")
+
 
 # model_name = ModelNames.BiLSTM.value
 # EvaModel.plot_model_preds_for_participant_on_traval(model_name)

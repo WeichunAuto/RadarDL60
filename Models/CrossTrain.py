@@ -19,6 +19,7 @@ from Models.NBEATS.NBeats import NBeats
 from Models.RNNED.NetGRU import NetGRU
 from Models.Informer.Informer import Informer
 from Models.Transformer.Transformer import Transformer
+from Models.Reformer.Reformer import Reformer
 
 def get_model(model_name):
     model = None
@@ -40,6 +41,8 @@ def get_model(model_name):
         model = Transformer()
     elif model_name == ModelNames.Informer.value:
         model = Informer()
+    elif model_name == ModelNames.Reformer.value:
+        model = Reformer()
 
     return model
 
@@ -88,7 +91,7 @@ epochs = 50
 # model_name = ModelNames.TSFM.value
 # start_training(model_name, epochs)
 
-model_name = ModelNames.Informer.value
+model_name = ModelNames.Reformer.value
 start_training(model_name, epochs)
 
 # model_name = ModelNames.RNNED.value

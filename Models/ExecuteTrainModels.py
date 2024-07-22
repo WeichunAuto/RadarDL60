@@ -37,7 +37,9 @@ class ExecuteTrainModels:
 
     def initialize_dataloader(self, participant_id=-1, is_shuffle=False):
 
-        if self.model_name == ModelNames.Transformer.value or self.model_name == ModelNames.Informer.value:
+        if (self.model_name == ModelNames.Transformer.value or
+                self.model_name == ModelNames.Informer.value or
+                self.model_name == ModelNames.Reformer.value):
             self.transformer_base = True
 
         if self.transformer_base is True:
@@ -148,36 +150,37 @@ class ExecuteTrainModels:
     def validate_per_epoch(self):
         self.model.eval()
         loss_batch_sum = 0.
-        for index, batch in enumerate(self.val_loader):
-            if self.transformer_base is True:
-                X_batch, y_batch, X_batch_mask, y_batch_mask = batch[0], batch[1], batch[2], batch[3]
-                if torch.cuda.is_available():
-                    X_batch = X_batch.cuda()
-                    y_batch = y_batch.cuda()
-                    X_batch_mask = X_batch_mask.cuda()
-                    y_batch_mask = y_batch_mask.cuda()
+        with torch.no_grad():
+            for index, batch in enumerate(self.val_loader):
+                if self.transformer_base is True:
+                    X_batch, y_batch, X_batch_mask, y_batch_mask = batch[0], batch[1], batch[2], batch[3]
+                    if torch.cuda.is_available():
+                        X_batch = X_batch.cuda()
+                        y_batch = y_batch.cuda()
+                        X_batch_mask = X_batch_mask.cuda()
+                        y_batch_mask = y_batch_mask.cuda()
 
-                # decoder input
-                dec_inp = torch.zeros_like(y_batch[:, -1:, :]).float()
-                dec_inp = torch.cat([y_batch[:, :self.model.label_len, :], dec_inp], dim=1).float()
+                    # decoder input
+                    dec_inp = torch.zeros_like(y_batch[:, -1:, :]).float()
+                    dec_inp = torch.cat([y_batch[:, :self.model.label_len, :], dec_inp], dim=1).float()
 
-                preds_batch = self.model(X_batch, X_batch_mask, dec_inp, y_batch_mask, y_batch)
+                    preds_batch = self.model(X_batch, X_batch_mask, dec_inp, y_batch_mask, y_batch)
 
-                f_dim = -1 if self.model.features == 'MS' else 0
-                preds_batch = preds_batch[:, -self.model.pred_len:, f_dim:]
-                y_batch = y_batch[:, -self.model.pred_len:, f_dim:]
-            else:
-                X_batch, y_batch = batch[0], batch[1]
+                    f_dim = -1 if self.model.features == 'MS' else 0
+                    preds_batch = preds_batch[:, -self.model.pred_len:, f_dim:]
+                    y_batch = y_batch[:, -self.model.pred_len:, f_dim:]
+                else:
+                    X_batch, y_batch = batch[0], batch[1]
 
-                if torch.cuda.is_available():
-                    X_batch = X_batch.cuda()
-                    y_batch = y_batch.cuda()
+                    if torch.cuda.is_available():
+                        X_batch = X_batch.cuda()
+                        y_batch = y_batch.cuda()
 
-                with torch.inference_mode():  # 关闭 gradient tracking
-                    preds_batch = self.model(X_batch)  # 2. 预测
+                    with torch.inference_mode():  # 关闭 gradient tracking
+                        preds_batch = self.model(X_batch)  # 2. 预测
 
-            loss = self.loss_fun(preds_batch, y_batch)  # 3. 计算 loss
-            loss_batch_sum += loss.item()
+                loss = self.loss_fun(preds_batch, y_batch)  # 3. 计算 loss
+                loss_batch_sum += loss.item()
 
         return loss_batch_sum
 
