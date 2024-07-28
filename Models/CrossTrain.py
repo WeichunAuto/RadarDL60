@@ -20,6 +20,7 @@ from Models.RNNED.NetGRU import NetGRU
 from Models.Informer.Informer import Informer
 from Models.Transformer.Transformer import Transformer
 from Models.Reformer.Reformer import Reformer
+from Models.MTGNN.MTGNN import MTGNN
 
 def get_model(model_name):
     model = None
@@ -43,6 +44,8 @@ def get_model(model_name):
         model = Informer()
     elif model_name == ModelNames.Reformer.value:
         model = Reformer()
+    elif model_name == ModelNames.MTGNN.value:
+        model = MTGNN()
 
     return model
 
@@ -91,7 +94,7 @@ epochs = 50
 # model_name = ModelNames.TSFM.value
 # start_training(model_name, epochs)
 
-model_name = ModelNames.Reformer.value
+model_name = ModelNames.MTGNN.value
 start_training(model_name, epochs)
 
 # model_name = ModelNames.RNNED.value

@@ -140,6 +140,7 @@ class ExecuteTrainModels:
             loss = self.loss_fun(preds_batch, y_batch)  # 3. 计算 loss
             self.optimizer.zero_grad()  # 4. 每一次 loop, 都重置 gradient
             loss.backward()  # 5. 反向传播，计算并更新 gradient 为 True 的参数值
+
             torch.nn.utils.clip_grad_value_(self.model.parameters(), clip_value=50)  # 在更新权重之前对梯度进行裁剪，使其不超过 50
             self.optimizer.step()  # 6. 更新 参数值
 

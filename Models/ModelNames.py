@@ -12,6 +12,7 @@ class ModelNames(Enum):
     Transformer = "Transformer"
     Informer = "Informer"
     Reformer = "Reformer"
+    MTGNN = "MTGNN"
 
 
 class PlotMarker(Enum):
@@ -23,6 +24,8 @@ class PlotMarker(Enum):
     CNNLSTM = "8"
     NBEATS = "p"
     Transformer = "+"
+    Informer = "H"
+    Reformer = "x"
 
 # all_v = list(PlotMarker)
 # s = ModelNames.NBEATS.value
