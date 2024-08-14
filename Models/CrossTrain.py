@@ -6,8 +6,6 @@ import pandas as pd
 
 import sys
 
-
-
 sys.path.append('/home/syt0722/Weichun/60pts')
 from Models.ExecuteTrainModels import ExecuteTrainModels
 from Models.ModelNames import ModelNames
