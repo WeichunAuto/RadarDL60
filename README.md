@@ -1,6 +1,14 @@
 <h1 align='center'>Evaluation of Deep Learning Models for Prediction of Heart Rate Using Continuous Wave Radar Signals</h1>
 
 </br></br>
+# Requirements
+- Python 3.11
+- matplotlib == 3.8.0
+- numpy == 1.26.4
+- pandas == 2.1.4
+- scikit_learn == 1.2.2
+- torch == 2.2.2
+
 
 Five more Transformer-based deep learning models have been deployed for this research project.
 
