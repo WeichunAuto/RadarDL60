@@ -1,6 +1,5 @@
 <h1 align='center'>Evaluation of Deep Learning Models for Prediction of Heart Rate Using Continuous Wave Radar Signals</h1>
 
-</br></br>
 # Requirements
 - Python 3.11
 - matplotlib == 3.8.0
